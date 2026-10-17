@@ -1,0 +1,22 @@
+{
+  "name": "aether-x",
+  "version": "5.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test tests/*.test.mjs",
+    "build": "vite build && node scripts/create-offline.mjs",
+    "verify:offline": "node scripts/verify-offline.mjs"
+  },
+  "dependencies": {
+    "three": "0.160.0"
+  },
+  "devDependencies": {
+    "@types/three": "0.160.0",
+    "esbuild": "0.25.12",
+    "typescript": "5.9.3",
+    "vite": "8.3.4"
+  }
+}
