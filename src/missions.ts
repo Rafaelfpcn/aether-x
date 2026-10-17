@@ -42,7 +42,7 @@ export const MISSIONS: MissionDefinition[] = [
     durationSeconds: 180,
     silverSeconds: 115,
     goldSeconds: 80,
-    palette: { background: 0x070b12, fog: 0x08101a, gridCenter: 0x266e81, gridLines: 0x163041 },
+    palette: { background: 0x0b1420, fog: 0x14243a, gridCenter: 0x2d9eb7, gridLines: 0x24445d },
   },
   {
     id: 'intercept',
@@ -57,7 +57,7 @@ export const MISSIONS: MissionDefinition[] = [
     durationSeconds: 180,
     silverSeconds: 115,
     goldSeconds: 85,
-    palette: { background: 0x0a0813, fog: 0x130d20, gridCenter: 0x694189, gridLines: 0x2a1e3d },
+    palette: { background: 0x100e1d, fog: 0x201b34, gridCenter: 0x9662c0, gridLines: 0x493760 },
     enemyWave: ['scout', 'scout', 'gunner', 'gunner', 'bulwark'],
   },
   {
@@ -73,7 +73,7 @@ export const MISSIONS: MissionDefinition[] = [
     durationSeconds: 240,
     silverSeconds: 170,
     goldSeconds: 125,
-    palette: { background: 0x10090d, fog: 0x1b0c12, gridCenter: 0x783347, gridLines: 0x3b1d2c },
+    palette: { background: 0x160d13, fog: 0x291724, gridCenter: 0xc2556f, gridLines: 0x563044 },
     bossPatterns: ['volley', 'fan', 'charge'],
   },
 ];

@@ -126,6 +126,7 @@ export class Game {
   private damageCooldown = 0;
   private cameraShake = 0;
   private arenaGrid: THREE.GridHelper | null = null;
+  private readonly arenaAccents: THREE.MeshBasicMaterial[] = [];
   private bossPhase = 1;
   private bossCycle = 0;
   private bossExposed = true;
@@ -152,18 +153,18 @@ export class Game {
     this.audio = audio;
     this.callbacks = callbacks;
     this.scene.background = new THREE.Color(0x070b12);
-    this.scene.fog = new THREE.FogExp2(0x08101a, 0.0045);
+    this.scene.fog = new THREE.FogExp2(0x101a29, 0.0035);
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
     this.renderer.setSize(container.clientWidth || window.innerWidth, container.clientHeight || window.innerHeight);
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.14;
+    this.renderer.toneMappingExposure = 1.25;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     container.replaceChildren(this.renderer.domElement);
     this.renderer.domElement.setAttribute('aria-hidden', 'true');
 
     this.camera.position.set(0, 12, 20);
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.18, 0.42, 0.2);
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.92, 0.38, 0.24);
     this.composer = new EffectComposer(this.renderer);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
     this.composer.addPass(this.bloom);
@@ -283,11 +284,11 @@ export class Game {
   }
 
   private buildLighting(): void {
-    this.scene.add(new THREE.AmbientLight(0x8299b8, 1.15));
+    this.scene.add(new THREE.AmbientLight(0xa2b9d1, 1.35));
     const key = new THREE.DirectionalLight(0xd9f4ff, 2.1);
     key.position.set(32, 55, 24);
     this.scene.add(key);
-    const fill = new THREE.HemisphereLight(0x4d91b6, 0x111824, 1.2);
+    const fill = new THREE.HemisphereLight(0x70b8d4, 0x263448, 1.45);
     this.scene.add(fill);
   }
 
@@ -296,21 +297,30 @@ export class Game {
     this.arenaGrid = grid;
     const gridMaterial = grid.material as THREE.Material;
     gridMaterial.transparent = true;
-    gridMaterial.opacity = 0.34;
+    gridMaterial.opacity = 0.46;
     this.scene.add(grid);
     const floor = new THREE.Mesh(
       new THREE.CircleGeometry(185, 96),
-      new THREE.MeshBasicMaterial({ color: 0x09131d, transparent: true, opacity: 0.48, side: THREE.DoubleSide }),
+      new THREE.MeshBasicMaterial({ color: 0x122131, transparent: true, opacity: 0.56, side: THREE.DoubleSide }),
     );
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = -0.12;
     this.scene.add(floor);
 
+    for (const [index, radius] of [24, 48, 72].entries()) {
+      const material = new THREE.MeshBasicMaterial({ color: index === 0 ? 0x2d9eb7 : 0x24445d, transparent: true, opacity: index === 0 ? 0.28 : 0.2 });
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(radius, 0.075, 6, 144), material);
+      ring.rotation.x = Math.PI / 2;
+      ring.position.y = -0.04;
+      this.scene.add(ring);
+      this.arenaAccents.push(material);
+    }
+
     const random = this.seededRandom(80989);
     const city = new THREE.Group();
     const buildingGeometry = new THREE.BoxGeometry(1, 1, 1);
-    const buildingMaterials = [0x101b29, 0x14202c, 0x0b1724].map((color) => new THREE.MeshStandardMaterial({ color, metalness: 0.38, roughness: 0.74 }));
-    const beaconMaterials = [0x1c8091, 0x793852, 0x92723d].map((color) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.72 }));
+    const buildingMaterials = [0x1a2a3c, 0x203349, 0x142536].map((color) => new THREE.MeshStandardMaterial({ color, emissive: 0x07111d, emissiveIntensity: 0.55, metalness: 0.12, roughness: 0.76 }));
+    const beaconMaterials = [0x36c4d8, 0xd4537c, 0xe0b45f].map((color) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.86 }));
     const windowGeometry = new THREE.BoxGeometry(0.12, 0.55, 0.06);
     for (let index = 0; index < 94; index++) {
       const angle = random() * Math.PI * 2;
@@ -354,6 +364,7 @@ export class Game {
   private applyMissionPalette(mission: MissionDefinition): void {
     this.scene.background = new THREE.Color(mission.palette.background);
     if (this.scene.fog instanceof THREE.FogExp2) this.scene.fog.color.setHex(mission.palette.fog);
+    this.arenaAccents.forEach((material, index) => material.color.setHex(index === 0 ? mission.palette.gridCenter : mission.palette.gridLines));
     const materials = this.arenaGrid?.material;
     if (!materials) return;
     const list = Array.isArray(materials) ? materials : [materials];
@@ -379,15 +390,15 @@ export class Game {
   }
 
   private buildDrone(): void {
-    const armor = new THREE.MeshStandardMaterial({ color: 0x17212c, metalness: 0.82, roughness: 0.29 });
-    const carbon = new THREE.MeshStandardMaterial({ color: 0x080d14, metalness: 0.56, roughness: 0.5 });
+    const armor = new THREE.MeshStandardMaterial({ color: 0x34495d, emissive: 0x081723, emissiveIntensity: 0.9, metalness: 0.38, roughness: 0.4 });
+    const carbon = new THREE.MeshStandardMaterial({ color: 0x172635, emissive: 0x07131d, emissiveIntensity: 0.7, metalness: 0.22, roughness: 0.52 });
     const chrome = new THREE.MeshStandardMaterial({ color: 0x9ab0ba, metalness: 0.94, roughness: 0.16 });
     const copper = new THREE.MeshStandardMaterial({ color: 0xb86742, metalness: 0.85, roughness: 0.28 });
     const glass = new THREE.MeshPhysicalMaterial({ color: 0x0c3444, metalness: 0.16, roughness: 0.12, transmission: 0.22, transparent: true, opacity: 0.9, clearcoat: 0.9 });
     const neon = this.makeNeonMaterial();
     this.drone.position.set(0, 8, 0);
     const core = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.OctahedronGeometry(1.0, 1), carbon);
+    const body = new THREE.Mesh(new THREE.OctahedronGeometry(1.0, 1), armor);
     body.scale.set(1.25, 0.65, 1.55);
     core.add(body);
     const canopy = new THREE.Mesh(new THREE.SphereGeometry(0.78, 20, 16), glass);
