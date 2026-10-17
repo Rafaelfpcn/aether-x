@@ -94,6 +94,7 @@ export class Game {
   private readonly bloom: UnrealBloomPass;
   private readonly clock = new THREE.Clock();
   private readonly drone = new THREE.Group();
+  private coreCrystal: THREE.Mesh | null = null;
   private readonly rotors: Rotor[] = [];
   private readonly gates: Gate[] = [];
   private readonly enemies: Enemy[] = [];
@@ -406,9 +407,9 @@ export class Game {
     canopy.scale.set(1, 0.42, 1.12);
     canopy.position.set(0, 0.39, -0.16);
     core.add(canopy);
-    const coreCrystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.38, 1), neon);
-    coreCrystal.position.set(0, 0.66, -0.2);
-    core.add(coreCrystal);
+    this.coreCrystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.38, 1), neon);
+    this.coreCrystal.position.set(0, 0.66, -0.2);
+    core.add(this.coreCrystal);
     const coreRing = new THREE.Mesh(new THREE.TorusGeometry(0.86, 0.045, 10, 48), neon);
     coreRing.rotation.x = Math.PI / 2;
     coreRing.position.y = -0.02;
@@ -695,8 +696,7 @@ export class Game {
   }
 
   private updateAmbient(elapsed: number, dt: number): void {
-    const crystal = this.drone.children.find((child) => child instanceof THREE.Group);
-    if (crystal) crystal.rotation.y += dt * 0.32;
+    if (this.coreCrystal) this.coreCrystal.rotation.y += dt * 0.32;
     this.gates.forEach((gate, index) => {
       if (!gate.group.visible) return;
       gate.ring.rotation.z += dt * (0.75 + index * 0.025);
