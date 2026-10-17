@@ -18,6 +18,7 @@ const state = {
   toastTimer: 0,
   warningTimer: 0,
   damageTimer: 0,
+  hitTimer: 0,
 };
 
 const $ = <T extends HTMLElement>(selector: string): T => {
@@ -53,6 +54,7 @@ function showMenu(): void {
   hud.classList.add('is-hidden');
   showScreen('menu-screen');
   audioHint.classList.add('is-hidden');
+  audio.setScene('menu');
   renderMenu();
 }
 
@@ -139,6 +141,10 @@ function launchMission(id: MissionId): void {
   updateObjective(0);
   $('#boss-panel').classList.toggle('is-hidden', id !== 'sentinel');
   $('#boss-panel').classList.remove('exposed');
+  $('#tutorial-tip').classList.toggle('is-hidden', id !== 'training');
+  $('#score').textContent = '000000';
+  $('#boost-fill').style.width = '100%';
+  $('#boost-value').textContent = '100%';
   game.startMission(state.activeMission);
   game.setActive(true);
   $('#shield-fill').style.width = '100%';
@@ -147,6 +153,7 @@ function launchMission(id: MissionId): void {
   $('#reticle').classList.remove('locked');
   $('#lock-label').classList.remove('active');
   $('#pause-button').setAttribute('aria-pressed', 'false');
+  audio.setScene(id === 'sentinel' ? 'boss' : 'combat');
   audio.unlock();
 }
 
@@ -183,6 +190,8 @@ function handleGameEvent(event: GameEvent): void {
   if (event.type === 'telemetry') {
     $('#speed').textContent = String(event.speed).padStart(3, '0');
     $('#altitude').textContent = String(event.altitude).padStart(3, '0');
+    $('#boost-fill').style.width = `${event.boost}%`;
+    $('#boost-value').textContent = `${event.boost}%`;
   } else if (event.type === 'gate') {
     if (state.activeMission?.objectiveKind === 'gates') {
       updateObjective(event.count);
@@ -200,6 +209,18 @@ function handleGameEvent(event: GameEvent): void {
     $('#boss-panel').classList.toggle('exposed', event.exposed);
   } else if (event.type === 'bossDestroyed') {
     if (state.activeMission?.id === 'sentinel') finishMission(true);
+  } else if (event.type === 'score') {
+    $('#score').textContent = String(event.value).padStart(6, '0');
+  } else if (event.type === 'nearMiss') {
+    $('#score').textContent = String(event.score).padStart(6, '0');
+    showToast(`ESQUIVA TÁTICA · +${event.points}`);
+    $('#toast').classList.add('near-miss');
+    window.setTimeout(() => $('#toast').classList.remove('near-miss'), 1250);
+  } else if (event.type === 'hitConfirmed') {
+    const reticle = $('#reticle');
+    reticle.classList.add('hit');
+    window.clearTimeout(state.hitTimer);
+    state.hitTimer = window.setTimeout(() => reticle.classList.remove('hit'), 130);
   } else if (event.type === 'damage') {
     $('#shield-fill').style.width = `${event.shield}%`;
     $('#shield-value').textContent = `${Math.round(event.shield)}%`;
@@ -209,10 +230,13 @@ function handleGameEvent(event: GameEvent): void {
     state.damageTimer = window.setTimeout(() => $('#damage-flash').classList.remove('active'), 190);
     if (event.shield <= 0) finishMission(false, 'O escudo do AETHER-X foi esgotado.');
   } else if (event.type === 'warning') {
-    $('#warning').textContent = state.activeMission?.id === 'sentinel' ? 'ATAQUE DO ALFA · DESVIE' : 'AMEAÇA DETECTADA · MANOBRE';
+    const labels = event.boss
+      ? { volley: 'RAJADA DO ALFA · DESVIE', fan: 'LEQUE DO ALFA · MUDE A ROTA', charge: 'LANÇA DO ALFA · QUEBRE O ÂNGULO' }
+      : { volley: 'DISPARO HOSTIL · MANOBRE', fan: 'LEQUE DO GUNNER · SUBA OU DESÇA', charge: 'CANHÃO PESADO · DESVIE' };
+    $('#warning').textContent = labels[event.pattern];
     $('#warning').classList.add('active');
     window.clearTimeout(state.warningTimer);
-    state.warningTimer = window.setTimeout(() => $('#warning').classList.remove('active'), 950);
+    state.warningTimer = window.setTimeout(() => $('#warning').classList.remove('active'), event.pattern === 'charge' ? 1350 : 1050);
   } else if (event.type === 'lock') {
     $('#reticle').classList.toggle('locked', event.locked);
     $('#lock-label').classList.toggle('active', event.locked);
@@ -224,6 +248,7 @@ function handleGameEvent(event: GameEvent): void {
 function showToast(text: string): void {
   const toast = $('#toast');
   toast.textContent = text;
+  toast.classList.remove('near-miss');
   toast.classList.add('active');
   window.clearTimeout(state.toastTimer);
   state.toastTimer = window.setTimeout(() => toast.classList.remove('active'), 1200);
@@ -233,6 +258,7 @@ function pauseMission(): void {
   if (state.game !== 'playing') return;
   transition('paused');
   game.setActive(false);
+  audio.setScene('paused');
   $('#pause-button').setAttribute('aria-pressed', 'true');
   showScreen('pause-screen');
 }
@@ -242,6 +268,7 @@ function resumeMission(): void {
   transition('playing');
   showScreen(null);
   game.setActive(true);
+  audio.setScene(state.activeMission?.id === 'sentinel' ? 'boss' : 'combat');
   $('#pause-button').setAttribute('aria-pressed', 'false');
 }
 
@@ -249,6 +276,7 @@ function finishMission(success: boolean, reason?: string): void {
   if (state.game !== 'playing' || !state.activeMission) return;
   const mission = state.activeMission;
   game.setActive(false);
+  audio.setScene('menu');
   const remaining = Math.max(0, state.remaining);
   const shield = game.getPlayerShield();
   const medal = success ? awardMedal(mission, state.elapsed, shield) : 0;

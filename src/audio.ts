@@ -1,10 +1,13 @@
 export class AudioEngine {
+  private scene: 'menu' | 'combat' | 'boss' | 'paused' = 'menu';
   private context: AudioContext | null = null;
   private master: GainNode | null = null;
   private engineOsc: OscillatorNode | null = null;
   private engineGain: GainNode | null = null;
   private volume = 0.7;
   private muted = false;
+  private musicTimer = 0;
+  private musicStep = 0;
   private readonly onReady: () => void;
 
   constructor(onReady: () => void) {
@@ -31,6 +34,7 @@ export class AudioEngine {
       this.engineOsc.connect(filter).connect(this.engineGain).connect(this.master);
       this.engineOsc.start();
       this.onReady();
+      this.startMusic();
     }
     if (this.context.state === 'suspended') void this.context.resume();
   }
@@ -49,6 +53,18 @@ export class AudioEngine {
     return this.muted;
   }
 
+  setScene(scene: 'menu' | 'combat' | 'boss' | 'paused'): void {
+    if (this.scene === scene) return;
+    this.scene = scene;
+    this.musicStep = 0;
+    if (scene === 'paused') {
+      window.clearInterval(this.musicTimer);
+      this.musicTimer = 0;
+      return;
+    }
+    this.startMusic();
+  }
+
   update(speed: number, boosting: boolean): void {
     if (!this.context || !this.engineOsc) return;
     const now = this.context.currentTime;
@@ -56,7 +72,7 @@ export class AudioEngine {
     this.engineOsc.frequency.setTargetAtTime(target, now, 0.08);
   }
 
-  play(kind: 'shot' | 'hit' | 'damage' | 'warning' | 'gate' | 'explosion' | 'win' | 'fail'): void {
+  play(kind: 'shot' | 'hit' | 'damage' | 'warning' | 'gate' | 'nearMiss' | 'explosion' | 'win' | 'fail'): void {
     this.unlock();
     if (!this.context || !this.master) return;
     const now = this.context.currentTime;
@@ -66,6 +82,7 @@ export class AudioEngine {
       damage: { from: 180, to: 52, duration: 0.26, wave: 'sawtooth', gain: 0.24 },
       warning: { from: 280, to: 460, duration: 0.22, wave: 'square', gain: 0.08 },
       gate: { from: 640, to: 1040, duration: 0.28, wave: 'sine', gain: 0.14 },
+      nearMiss: { from: 780, to: 1320, duration: 0.19, wave: 'triangle', gain: 0.12 },
       explosion: { from: 160, to: 38, duration: 0.38, wave: 'triangle', gain: 0.22 },
       win: { from: 520, to: 1040, duration: 0.48, wave: 'triangle', gain: 0.16 },
       fail: { from: 240, to: 70, duration: 0.45, wave: 'sawtooth', gain: 0.16 },
@@ -81,6 +98,37 @@ export class AudioEngine {
     oscillator.connect(envelope).connect(this.master);
     oscillator.start(now);
     oscillator.stop(now + note.duration + 0.02);
+  }
+
+  private startMusic(): void {
+    if (!this.context || this.musicTimer || this.scene === 'paused') return;
+    this.musicTimer = window.setInterval(() => this.playMusicBeat(), 500);
+    this.playMusicBeat();
+  }
+
+  private playMusicBeat(): void {
+    if (!this.context || !this.master || this.scene === 'paused') return;
+    const patterns: Record<Exclude<typeof this.scene, 'paused'>, number[]> = {
+      menu: [130.81, 196, 164.81, 196, 261.63, 196, 164.81, 196],
+      combat: [146.83, 220, 174.61, 261.63, 146.83, 220, 196, 261.63],
+      boss: [110, 164.81, 130.81, 196, 110, 164.81, 146.83, 196],
+    };
+    const pattern = patterns[this.scene];
+    const now = this.context.currentTime;
+    const oscillator = this.context.createOscillator();
+    const envelope = this.context.createGain();
+    const filter = this.context.createBiquadFilter();
+    oscillator.type = 'triangle';
+    oscillator.frequency.setValueAtTime(pattern[this.musicStep % pattern.length], now);
+    filter.type = 'lowpass';
+    filter.frequency.value = 760;
+    envelope.gain.setValueAtTime(0.001, now);
+    envelope.gain.linearRampToValueAtTime(this.scene === 'boss' ? 0.045 : 0.03, now + 0.035);
+    envelope.gain.exponentialRampToValueAtTime(0.001, now + 0.42);
+    oscillator.connect(filter).connect(envelope).connect(this.master);
+    oscillator.start(now);
+    oscillator.stop(now + 0.44);
+    this.musicStep++;
   }
 
   private applyGain(): void {

@@ -1,5 +1,14 @@
 export type MissionId = 'training' | 'intercept' | 'sentinel';
 export type ObjectiveKind = 'gates' | 'kills' | 'boss';
+export type EnemyArchetype = 'scout' | 'gunner' | 'bulwark';
+export type BossAttackPattern = 'volley' | 'fan' | 'charge';
+
+export interface MissionPalette {
+  background: number;
+  fog: number;
+  gridCenter: number;
+  gridLines: number;
+}
 
 export interface MissionDefinition {
   id: MissionId;
@@ -14,6 +23,9 @@ export interface MissionDefinition {
   durationSeconds: number;
   silverSeconds: number;
   goldSeconds: number;
+  palette: MissionPalette;
+  enemyWave?: readonly EnemyArchetype[];
+  bossPatterns?: readonly BossAttackPattern[];
 }
 
 export const MISSIONS: MissionDefinition[] = [
@@ -30,6 +42,7 @@ export const MISSIONS: MissionDefinition[] = [
     durationSeconds: 180,
     silverSeconds: 115,
     goldSeconds: 80,
+    palette: { background: 0x070b12, fog: 0x08101a, gridCenter: 0x266e81, gridLines: 0x163041 },
   },
   {
     id: 'intercept',
@@ -44,6 +57,8 @@ export const MISSIONS: MissionDefinition[] = [
     durationSeconds: 180,
     silverSeconds: 115,
     goldSeconds: 85,
+    palette: { background: 0x0a0813, fog: 0x130d20, gridCenter: 0x694189, gridLines: 0x2a1e3d },
+    enemyWave: ['scout', 'scout', 'gunner', 'gunner', 'bulwark'],
   },
   {
     id: 'sentinel',
@@ -58,6 +73,8 @@ export const MISSIONS: MissionDefinition[] = [
     durationSeconds: 240,
     silverSeconds: 170,
     goldSeconds: 125,
+    palette: { background: 0x10090d, fog: 0x1b0c12, gridCenter: 0x783347, gridLines: 0x3b1d2c },
+    bossPatterns: ['volley', 'fan', 'charge'],
   },
 ];
 
@@ -69,4 +86,9 @@ export function missionById(id: MissionId): MissionDefinition {
 
 export function missionIdAt(index: number): MissionId | null {
   return MISSIONS[index]?.id ?? null;
+}
+
+export function bossPatternForPhase(patterns: readonly BossAttackPattern[] | undefined, phase: number): BossAttackPattern {
+  const safePhase = Math.max(1, Math.floor(phase));
+  return patterns?.[safePhase - 1] ?? patterns?.[patterns.length - 1] ?? 'volley';
 }

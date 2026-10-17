@@ -2,19 +2,22 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-import type { MissionDefinition, MissionId } from './missions';
+import { bossPatternForPhase, type BossAttackPattern, type EnemyArchetype, type MissionDefinition, type MissionId } from './missions';
 import type { AudioEngine } from './audio';
 import type { ThemeId } from './storage';
-import { applyFrameIndependentDamping, pointToSegmentDistanceSquared } from './physics';
+import { advanceBoostState, applyFrameIndependentDamping, classifyProjectilePass, pointToSegmentDistanceSquared } from './physics';
 
 export type GameEvent =
-  | { type: 'telemetry'; speed: number; altitude: number }
+  | { type: 'telemetry'; speed: number; altitude: number; boost: number }
   | { type: 'gate'; count: number }
-  | { type: 'enemyDestroyed'; count: number }
+  | { type: 'enemyDestroyed'; count: number; archetype?: EnemyArchetype }
   | { type: 'boss'; hp: number; phase: number; exposed: boolean }
   | { type: 'bossDestroyed' }
   | { type: 'damage'; shield: number }
-  | { type: 'warning' }
+  | { type: 'warning'; boss: boolean; pattern: BossAttackPattern }
+  | { type: 'nearMiss'; count: number; points: number; score: number }
+  | { type: 'score'; value: number }
+  | { type: 'hitConfirmed' }
   | { type: 'lock'; locked: boolean }
   | { type: 'toast'; text: string };
 
@@ -32,15 +35,19 @@ interface Enemy {
   rings: THREE.Mesh[];
   alive: boolean;
   boss: boolean;
+  archetype: EnemyArchetype;
   hp: number;
   maxHp: number;
   angle: number;
   radius: number;
   baseHeight: number;
+  previousPosition: THREE.Vector3;
+  velocity: THREE.Vector3;
   orbitSpeed: number;
   attackTimer: number;
   attackCharge: number;
   attackReady: boolean;
+  attackPattern: BossAttackPattern;
   hitFlash: number;
 }
 
@@ -49,6 +56,7 @@ interface Bolt {
   velocity: THREE.Vector3;
   life: number;
   playerOwned: boolean;
+  nearMissReported: boolean;
 }
 
 interface Burst {
@@ -97,6 +105,7 @@ export class Game {
   private readonly enemyBoltGeometry = new THREE.SphereGeometry(0.26, 12, 12);
   private readonly enemyBoltMaterial = new THREE.MeshBasicMaterial({ color: 0xff4568 });
   private readonly droneVelocity = new THREE.Vector3();
+  private readonly previousPlayerPosition = new THREE.Vector3();
   private readonly cameraOffset = new THREE.Vector3(0, 4.5, 12);
   private readonly forward = new THREE.Vector3();
   private mission: MissionDefinition | null = null;
@@ -110,6 +119,13 @@ export class Game {
   private shield = MAX_SHIELD;
   private gateCount = 0;
   private enemyKillCount = 0;
+  private nearMissCount = 0;
+  private scoreBonus = 0;
+  private boostEnergy = 100;
+  private boosting = false;
+  private damageCooldown = 0;
+  private cameraShake = 0;
+  private arenaGrid: THREE.GridHelper | null = null;
   private bossPhase = 1;
   private bossCycle = 0;
   private bossExposed = true;
@@ -138,7 +154,7 @@ export class Game {
     this.scene.background = new THREE.Color(0x070b12);
     this.scene.fog = new THREE.FogExp2(0x08101a, 0.0045);
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
     this.renderer.setSize(container.clientWidth || window.innerWidth, container.clientHeight || window.innerHeight);
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.14;
@@ -161,7 +177,7 @@ export class Game {
   }
 
   getPlayerShield(): number { return this.shield; }
-  getScore(): number { return this.gateCount * 100 + this.enemyKillCount * 250; }
+  getScore(): number { return this.gateCount * 100 + this.enemyKillCount * 250 + this.scoreBonus; }
 
   setTheme(theme: ThemeId): void {
     const colors: Record<ThemeId, number> = { cyan: 0x39e5ef, crimson: 0xff476b, gold: 0xffca68 };
@@ -191,18 +207,28 @@ export class Game {
     this.mode = mission.id;
     this.gateCount = 0;
     this.enemyKillCount = 0;
+    this.nearMissCount = 0;
+    this.scoreBonus = 0;
     this.shield = MAX_SHIELD;
+    this.boostEnergy = 100;
+    this.boosting = false;
+    this.damageCooldown = 0;
+    this.cameraShake = 0;
     this.elapsed = 0;
     this.bossPhase = 1;
     this.bossCycle = 0;
     this.bossExposed = true;
+    this.lastTelemetry = 0;
+    this.lastShot = 0;
     this.boundaryToastCooldown = 0;
     this.drone.position.set(0, 8, 0);
+    this.previousPlayerPosition.copy(this.drone.position);
     this.drone.rotation.set(0, 0, 0);
     this.droneVelocity.set(0, 0, 0);
     this.camera.position.set(0, 12, 20);
     this.camera.lookAt(0, 8, -10);
     this.lockedEnemy = null;
+    this.applyMissionPalette(mission);
     this.gates.forEach((gate, index) => {
       gate.collected = false;
       gate.group.visible = mission.id === 'training';
@@ -216,14 +242,17 @@ export class Game {
       gate.ring.material.emissive.setHex(color);
     });
     if (mission.id === 'intercept') {
-      for (let index = 0; index < 6; index++) this.enemies.push(this.createEnemy(index, false, 6));
+      const wave = mission.enemyWave ?? [];
+      wave.forEach((archetype, index) => this.enemies.push(this.createEnemy(index, false, wave.length, archetype)));
     } else if (mission.id === 'sentinel') {
       this.enemies.push(this.createEnemy(0, true, 1));
     }
     this.callbacks.onEvent({ type: 'damage', shield: this.shield });
     this.callbacks.onEvent({ type: 'gate', count: 0 });
     this.callbacks.onEvent({ type: 'enemyDestroyed', count: 0 });
+    this.callbacks.onEvent({ type: 'score', value: 0 });
     this.callbacks.onEvent({ type: 'boss', hp: 1, phase: 1, exposed: true });
+    this.callbacks.onEvent({ type: 'telemetry', speed: 0, altitude: 16, boost: 100 });
     this.audio.play('gate');
   }
 
@@ -264,6 +293,7 @@ export class Game {
 
   private buildEnvironment(): void {
     const grid = new THREE.GridHelper(270, 108, 0x266e81, 0x163041);
+    this.arenaGrid = grid;
     const gridMaterial = grid.material as THREE.Material;
     gridMaterial.transparent = true;
     gridMaterial.opacity = 0.34;
@@ -319,6 +349,19 @@ export class Game {
     stars.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
     this.scene.add(new THREE.Points(stars, new THREE.PointsMaterial({ color: 0x7bdce7, size: 0.65, transparent: true, opacity: 0.65, sizeAttenuation: true })));
     this.buildArenaMarkers();
+  }
+
+  private applyMissionPalette(mission: MissionDefinition): void {
+    this.scene.background = new THREE.Color(mission.palette.background);
+    if (this.scene.fog instanceof THREE.FogExp2) this.scene.fog.color.setHex(mission.palette.fog);
+    const materials = this.arenaGrid?.material;
+    if (!materials) return;
+    const list = Array.isArray(materials) ? materials : [materials];
+    list.forEach((material, index) => {
+      if (material instanceof THREE.LineBasicMaterial) {
+        material.color.setHex(index === 0 ? mission.palette.gridCenter : mission.palette.gridLines);
+      }
+    });
   }
 
   private buildArenaMarkers(): void {
@@ -455,16 +498,19 @@ export class Game {
     return new THREE.Vector3(Math.sin(angle) * radius, 9 + Math.sin(index * 1.4) * 3.8, Math.cos(angle) * radius);
   }
 
-  private createEnemy(index: number, boss: boolean, total: number): Enemy {
+  private createEnemy(index: number, boss: boolean, total: number, archetype: EnemyArchetype = 'scout'): Enemy {
     const group = new THREE.Group();
-    const scale = boss ? 2.65 : 1;
+    const scale = boss ? 2.65 : archetype === 'bulwark' ? 1.25 : archetype === 'gunner' ? 1.08 : 0.86;
     group.scale.setScalar(scale);
-    const coreMaterial = new THREE.MeshStandardMaterial({ color: boss ? 0xff3159 : 0xff476b, emissive: boss ? 0x8b102c : 0x641226, emissiveIntensity: boss ? 2.7 : 2.0, metalness: 0.28, roughness: 0.18 });
+    const archetypeColor: Record<EnemyArchetype, number> = { scout: 0xff476b, gunner: 0xb56cff, bulwark: 0xff9b54 };
+    const archetypeEmissive: Record<EnemyArchetype, number> = { scout: 0x641226, gunner: 0x35134d, bulwark: 0x54200e };
+    const color = boss ? 0xff3159 : archetypeColor[archetype];
+    const coreMaterial = new THREE.MeshStandardMaterial({ color, emissive: boss ? 0x8b102c : archetypeEmissive[archetype], emissiveIntensity: boss ? 2.7 : 2.0, metalness: 0.28, roughness: 0.18 });
     const core = new THREE.Mesh(new THREE.OctahedronGeometry(boss ? 1.1 : 0.82, 1), coreMaterial);
     group.add(core);
     const rings: THREE.Mesh[] = [];
     for (let ringIndex = 0; ringIndex < (boss ? 3 : 2); ringIndex++) {
-      const ringMaterial = new THREE.MeshStandardMaterial({ color: ringIndex === 0 ? 0x3a1827 : 0x9e2748, emissive: ringIndex === 0 ? 0x260816 : 0x4d0b1c, emissiveIntensity: 1.5, metalness: 0.78, roughness: 0.22 });
+      const ringMaterial = new THREE.MeshStandardMaterial({ color: ringIndex === 0 ? 0x3a1827 : color, emissive: ringIndex === 0 ? 0x260816 : archetypeEmissive[archetype], emissiveIntensity: 1.5, metalness: 0.78, roughness: 0.22 });
       const ring = new THREE.Mesh(new THREE.TorusGeometry((boss ? 1.7 : 1.4) - ringIndex * 0.23, boss ? 0.09 : 0.065, 10, 40), ringMaterial);
       ring.rotation.x = ringIndex * 0.85;
       ring.rotation.y = ringIndex * 0.65;
@@ -479,22 +525,25 @@ export class Game {
       blade.rotation.y = -angle;
       group.add(blade);
     }
-    const glow = new THREE.PointLight(0xff204e, boss ? 7 : 2.6, boss ? 34 : 16, 2);
+    const glow = new THREE.PointLight(boss ? 0xff204e : color, boss ? 7 : archetype === 'bulwark' ? 3.2 : 2.6, boss ? 34 : 16, 2);
     group.add(glow);
     const angle = boss ? Math.PI : (index / total) * Math.PI * 2;
-    const radius = boss ? 40 : 32 + (index % 3) * 14;
-    const baseHeight = boss ? 15 : 10 + (index % 3) * 5;
+    const radius = boss ? 40 : archetype === 'scout' ? 32 + (index % 2) * 13 : archetype === 'gunner' ? 52 + (index % 2) * 5 : 42;
+    const baseHeight = boss ? 15 : archetype === 'scout' ? 10 + (index % 3) * 5 : archetype === 'gunner' ? 19 : 13;
     group.position.set(Math.cos(angle) * radius, baseHeight, Math.sin(angle) * radius);
     this.scene.add(group);
+    const bossPattern = bossPatternForPhase(this.mission?.bossPatterns, 1);
     return {
-      group, core, coreMaterial, rings, alive: true, boss,
-      hp: boss ? 300 : 80,
-      maxHp: boss ? 300 : 80,
+      group, core, coreMaterial, rings, alive: true, boss, archetype,
+      hp: boss ? 720 : archetype === 'scout' ? 70 : archetype === 'gunner' ? 120 : 200,
+      maxHp: boss ? 720 : archetype === 'scout' ? 70 : archetype === 'gunner' ? 120 : 200,
       angle, radius, baseHeight,
-      orbitSpeed: boss ? 0.13 : (0.24 + (index % 3) * 0.08) * (index % 2 === 0 ? 1 : -1),
-      attackTimer: boss ? 2.5 : 1.8 + (index % 4) * 0.65,
+      previousPosition: group.position.clone(), velocity: new THREE.Vector3(),
+      orbitSpeed: boss ? 0.13 : (archetype === 'scout' ? 0.52 : archetype === 'gunner' ? 0.18 : 0.11) * (index % 2 === 0 ? 1 : -1),
+      attackTimer: boss ? 2.5 : (archetype === 'scout' ? 2.8 : archetype === 'gunner' ? 3.3 : 4.0) + (index % 3) * 0.32,
       attackCharge: 0,
       attackReady: false,
+      attackPattern: boss ? bossPattern : archetype === 'gunner' ? 'fan' : archetype === 'bulwark' ? 'charge' : 'volley',
       hitFlash: 0,
     };
   }
@@ -568,6 +617,7 @@ export class Game {
 
   private update(dt: number, elapsed: number): void {
     this.elapsed += dt;
+    this.previousPlayerPosition.copy(this.drone.position);
     this.updatePlayer(dt);
     this.updateEnemies(dt, elapsed);
     this.updateGates(dt, elapsed);
@@ -577,6 +627,9 @@ export class Game {
     this.updateLock();
     this.cameraOffset.set(0, 4.5, 12).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.drone.rotation.y);
     const desiredPosition = this.drone.position.clone().add(this.cameraOffset);
+    this.cameraShake = Math.max(0, this.cameraShake - dt * 3.8);
+    desiredPosition.x += Math.sin(elapsed * 57) * this.cameraShake;
+    desiredPosition.y += Math.cos(elapsed * 43) * this.cameraShake * 0.38;
     this.camera.position.lerp(desiredPosition, 1 - Math.exp(-5.3 * dt));
     const viewTarget = this.drone.position.clone().add(this.forward.set(0, 0, -12).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.drone.rotation.y));
     this.camera.lookAt(viewTarget);
@@ -586,16 +639,21 @@ export class Game {
         type: 'telemetry',
         speed: Math.round(this.droneVelocity.length() * 6.5),
         altitude: Math.round(this.drone.position.y * 2),
+        boost: Math.round(this.boostEnergy),
       });
     }
-    this.audio.update(this.droneVelocity.length(), this.keys.has('shift'));
+    this.audio.update(this.droneVelocity.length(), this.boosting);
   }
 
   private updatePlayer(dt: number): void {
     this.boundaryToastCooldown = Math.max(0, this.boundaryToastCooldown - dt);
+    this.damageCooldown = Math.max(0, this.damageCooldown - dt);
     const key = (letter: string, arrow: string): boolean => this.keys.has(letter) || this.keys.has(arrow);
-    const boost = this.keys.has('shift');
-    const acceleration = boost ? 42 : 26;
+    const boostState = advanceBoostState(this.boostEnergy, this.keys.has('shift'), this.boosting, dt);
+    this.boostEnergy = boostState.energy;
+    this.boosting = boostState.active;
+    const boost = this.boosting;
+    const acceleration = boost ? 42 : 28;
     const turnSpeed = 2.1;
     if (key('a', 'arrowleft')) this.drone.rotation.y += turnSpeed * dt;
     if (key('d', 'arrowright')) this.drone.rotation.y -= turnSpeed * dt;
@@ -620,7 +678,7 @@ export class Game {
       }
     }
     const pitchTarget = (this.keys.has('w') || this.keys.has('arrowup') ? -0.26 : this.keys.has('s') || this.keys.has('arrowdown') ? 0.2 : 0) * (boost ? 1.25 : 1);
-    const rollTarget = this.keys.has('a') || this.keys.has('arrowleft') ? 0.28 : this.keys.has('d') || this.keys.has('arrowright') ? -0.28 : 0;
+    const rollTarget = this.keys.has('a') || this.keys.has('arrowleft') ? 0.34 : this.keys.has('d') || this.keys.has('arrowright') ? -0.34 : 0;
     this.drone.rotation.x = THREE.MathUtils.lerp(this.drone.rotation.x, pitchTarget, 1 - Math.exp(-6 * dt));
     this.drone.rotation.z = THREE.MathUtils.lerp(this.drone.rotation.z, rollTarget, 1 - Math.exp(-6 * dt));
     this.rotors.forEach(({ group, direction }) => { group.rotation.y += direction * dt * (boost ? 62 : 42); });
@@ -646,6 +704,7 @@ export class Game {
       this.audio.play('gate');
       this.spawnBurst(gate.group.position, 0x70f0c2, 28, 13, 0.7);
       this.callbacks.onEvent({ type: 'gate', count: this.gateCount });
+      this.callbacks.onEvent({ type: 'score', value: this.getScore() });
       this.callbacks.onEvent({ type: 'toast', text: `BALIZA ${String(this.gateCount).padStart(2, '0')} / 06` });
     }
     void dt;
@@ -657,11 +716,15 @@ export class Game {
       if (!enemy.alive) continue;
       if (!enemy.boss) {
         enemy.angle += enemy.orbitSpeed * dt;
-        enemy.group.position.set(Math.cos(enemy.angle) * enemy.radius, enemy.baseHeight + Math.sin(elapsed * 1.65 + enemy.angle) * 2.2, Math.sin(enemy.angle) * enemy.radius);
+        const weave = enemy.archetype === 'scout' ? Math.sin(elapsed * 2.7 + enemy.angle) * 5 : enemy.archetype === 'gunner' ? Math.sin(elapsed * 0.9 + enemy.angle) * 2 : Math.sin(elapsed * 0.55 + enemy.angle) * 1.1;
+        enemy.group.position.set(Math.cos(enemy.angle) * enemy.radius + weave, enemy.baseHeight + Math.sin(elapsed * (enemy.archetype === 'scout' ? 2.8 : 1.05) + enemy.angle) * (enemy.archetype === 'bulwark' ? 1.1 : 2.4), Math.sin(enemy.angle) * enemy.radius);
+        enemy.group.rotation.z = Math.sin(elapsed * (enemy.archetype === 'scout' ? 2.6 : 0.8) + enemy.angle) * (enemy.archetype === 'scout' ? 0.26 : 0.08);
       } else {
         enemy.group.position.set(Math.sin(elapsed * 0.17) * 10, 14 + Math.sin(elapsed * 0.85) * 2.2, -40 + Math.sin(elapsed * 0.21) * 7);
         this.updateBossPhase(enemy, dt);
       }
+      if (dt > 0) enemy.velocity.subVectors(enemy.group.position, enemy.previousPosition).divideScalar(dt);
+      enemy.previousPosition.copy(enemy.group.position);
       enemy.core.rotation.y += dt * (enemy.boss ? 1.15 : 1.8);
       enemy.core.rotation.x += dt * 0.72;
       enemy.rings.forEach((ring, index) => {
@@ -675,7 +738,7 @@ export class Game {
   }
 
   private updateBossPhase(boss: Enemy, dt: number): void {
-    const nextPhase = boss.hp > 200 ? 1 : boss.hp > 100 ? 2 : 3;
+    const nextPhase = boss.hp > 480 ? 1 : boss.hp > 240 ? 2 : 3;
     if (nextPhase !== this.bossPhase) {
       this.bossPhase = nextPhase;
       this.bossCycle = 0;
@@ -700,49 +763,66 @@ export class Game {
 
   private updateEnemyAttack(enemy: Enemy, dt: number): void {
     enemy.attackTimer -= dt;
-    const windup = enemy.boss ? 0.95 : 0.68;
+    if (enemy.boss) enemy.attackPattern = bossPatternForPhase(this.mission?.bossPatterns, this.bossPhase);
+    const windup = enemy.boss
+      ? enemy.attackPattern === 'charge' ? 1.25 : enemy.attackPattern === 'fan' ? 1.0 : 0.82
+      : enemy.archetype === 'gunner' ? 0.96 : enemy.archetype === 'bulwark' ? 1.12 : 0.7;
     if (enemy.attackTimer <= windup && !enemy.attackReady) {
       enemy.attackReady = true;
       enemy.attackCharge = windup;
-      this.callbacks.onEvent({ type: 'warning' });
+      this.callbacks.onEvent({ type: 'warning', boss: enemy.boss, pattern: enemy.attackPattern });
       this.audio.play('warning');
     }
     if (enemy.attackReady) {
       enemy.attackCharge -= dt;
       if (enemy.attackCharge <= 0) {
-        this.fireEnemyBolt(enemy);
+        this.fireEnemyAttack(enemy);
         enemy.attackReady = false;
-        enemy.attackTimer = enemy.boss ? (this.bossPhase === 1 ? 5.8 : this.bossPhase === 2 ? 4.8 : 3.8) : 4.1 + (enemy.angle % 1.2);
+        enemy.attackTimer = enemy.boss ? (this.bossPhase === 1 ? 5.8 : this.bossPhase === 2 ? 4.8 : 4.0) : enemy.archetype === 'scout' ? 5.4 : enemy.archetype === 'gunner' ? 5.8 : 6.6;
       }
     }
   }
 
-  private fireEnemyBolt(enemy: Enemy): void {
+  private fireEnemyAttack(enemy: Enemy): void {
     if (enemy.group.position.distanceTo(this.drone.position) > 88) return;
     const start = enemy.group.position.clone();
     const aim = this.drone.position.clone().sub(start).normalize();
+    const count = enemy.attackPattern === 'fan' ? (enemy.boss ? 5 : 3) : enemy.attackPattern === 'charge' ? (enemy.boss ? 1 : 3) : 1;
+    const spread = enemy.boss ? 0.24 : 0.18;
+    for (let index = 0; index < count; index++) {
+      const offset = count === 1 ? 0 : (index / (count - 1) - 0.5) * spread * 2;
+      const direction = aim.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), offset).normalize();
+      const speed = enemy.attackPattern === 'charge' ? (enemy.boss ? 32 : 18) : enemy.boss ? 18 : enemy.archetype === 'scout' ? 15 : 13;
+      this.fireEnemyBolt(start, direction, speed, enemy.attackPattern === 'charge');
+    }
+  }
+
+  private fireEnemyBolt(start: THREE.Vector3, direction: THREE.Vector3, speed: number, charged: boolean): void {
     const mesh = new THREE.Mesh(this.enemyBoltGeometry, this.enemyBoltMaterial);
     mesh.position.copy(start);
+    if (charged) mesh.scale.setScalar(1.7);
     this.scene.add(mesh);
-    this.bolts.push({ mesh, velocity: aim.multiplyScalar(enemy.boss ? 19 : 14), life: 0, playerOwned: false });
+    this.bolts.push({ mesh, velocity: direction.clone().multiplyScalar(speed), life: 0, playerOwned: false, nearMissReported: false });
   }
 
   private firePlayerWeapons(): void {
     if (!this.active || !this.mission) return;
     const now = performance.now();
-    if (now - this.lastShot < 170) return;
+    if (now - this.lastShot < 210) return;
     this.lastShot = now;
     this.audio.play('shot');
     const target = this.findLockedEnemy();
     const forward = new THREE.Vector3(0, 0, -1).applyEuler(this.drone.rotation).normalize();
     for (const side of [-1, 1]) {
       const start = new THREE.Vector3(side * 1.0, -0.28, -2.15).applyEuler(this.drone.rotation).add(this.drone.position);
-      const direction = target ? target.group.position.clone().sub(start).normalize() : forward.clone();
+      const direction = target
+        ? target.group.position.clone().addScaledVector(target.velocity, Math.min(0.55, start.distanceTo(target.group.position) / 142)).sub(start).normalize()
+        : forward.clone();
       const mesh = new THREE.Mesh(this.laserGeometry, this.laserMaterial);
       mesh.position.copy(start);
       mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
       this.scene.add(mesh);
-      this.bolts.push({ mesh, velocity: direction.multiplyScalar(142), life: 0, playerOwned: true });
+      this.bolts.push({ mesh, velocity: direction.multiplyScalar(142), life: 0, playerOwned: true, nearMissReported: false });
     }
   }
 
@@ -774,26 +854,41 @@ export class Game {
       const step = bolt.velocity.clone().multiplyScalar(dt);
       bolt.mesh.position.add(step);
       if (!bolt.playerOwned) {
-        if (pointToSegmentDistanceSquared(this.drone.position, previous, bolt.mesh.position) < 2.3) {
+        const relativeStart = previous.clone().sub(this.previousPlayerPosition);
+        const relativeEnd = bolt.mesh.position.clone().sub(this.drone.position);
+        const distanceSquared = pointToSegmentDistanceSquared({ x: 0, y: 0, z: 0 }, relativeStart, relativeEnd);
+        const pass = classifyProjectilePass(distanceSquared, 1.52, 5.4);
+        if (pass === 'hit') {
           this.damagePlayer();
           this.removeBolt(index);
           continue;
+        }
+        if (pass === 'near-miss' && !bolt.nearMissReported) {
+          bolt.nearMissReported = true;
+          this.nearMissCount++;
+          this.scoreBonus += 120;
+          this.audio.play('nearMiss');
+          this.callbacks.onEvent({ type: 'nearMiss', count: this.nearMissCount, points: 120, score: this.getScore() });
         }
       } else {
         let hit = false;
         for (const enemy of this.enemies) {
           if (!enemy.alive) continue;
           const radius = enemy.boss ? 4.0 : 2.2;
-          if (pointToSegmentDistanceSquared(enemy.group.position, previous, bolt.mesh.position) >= radius * radius) continue;
+          const relativeStart = previous.clone().sub(enemy.previousPosition);
+          const relativeEnd = bolt.mesh.position.clone().sub(enemy.group.position);
+          if (pointToSegmentDistanceSquared({ x: 0, y: 0, z: 0 }, relativeStart, relativeEnd) >= radius * radius) continue;
           hit = true;
           if (enemy.boss && !this.bossExposed) {
             this.spawnBurst(bolt.mesh.position, 0xffca68, 7, 4, 0.22);
             this.audio.play('hit');
             this.callbacks.onEvent({ type: 'toast', text: 'BLINDAGEM ATIVA' });
           } else {
-            enemy.hp -= enemy.boss ? 15 : 20;
+            enemy.hp -= enemy.boss ? 8 : 20;
             enemy.hitFlash = 0.1;
+            this.cameraShake = Math.max(this.cameraShake, 0.08);
             this.audio.play('hit');
+            this.callbacks.onEvent({ type: 'hitConfirmed' });
             this.spawnBurst(bolt.mesh.position, enemy.boss ? 0xffca68 : 0x39e5ef, 10, 6, 0.3);
             if (enemy.boss) this.callbacks.onEvent({ type: 'boss', hp: Math.max(0, enemy.hp / enemy.maxHp), phase: this.bossPhase, exposed: this.bossExposed });
             if (enemy.hp <= 0) this.destroyEnemy(enemy);
@@ -814,16 +909,21 @@ export class Game {
     enemy.group.visible = false;
     this.audio.play('explosion');
     if (enemy.boss) {
+      this.scoreBonus += 1000;
       this.callbacks.onEvent({ type: 'bossDestroyed' });
     } else {
       this.enemyKillCount++;
-      this.callbacks.onEvent({ type: 'enemyDestroyed', count: this.enemyKillCount });
+      this.callbacks.onEvent({ type: 'enemyDestroyed', count: this.enemyKillCount, archetype: enemy.archetype });
+      this.callbacks.onEvent({ type: 'score', value: this.getScore() });
       this.callbacks.onEvent({ type: 'toast', text: `ALVO ELIMINADO · ${this.enemyKillCount}` });
     }
   }
 
   private damagePlayer(): void {
+    if (this.damageCooldown > 0) return;
+    this.damageCooldown = 0.46;
     this.shield = Math.max(0, this.shield - (this.mode === 'sentinel' ? 22 : 18));
+    this.cameraShake = Math.max(this.cameraShake, 1.05);
     this.audio.play('damage');
     this.callbacks.onEvent({ type: 'damage', shield: this.shield });
     if (this.shield <= 0) this.callbacks.onEvent({ type: 'toast', text: 'ESCUDO CRÍTICO' });
@@ -913,7 +1013,8 @@ export class Game {
       ctx.beginPath(); ctx.arc(x, y, size, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
     };
     for (const gate of this.gates) if (gate.group.visible && !gate.collected) drawBlip(gate.group.position, '#70f0c2', 2.6);
-    for (const enemy of this.enemies) if (enemy.alive) drawBlip(enemy.group.position, enemy.boss ? '#ffca68' : '#ff476b', enemy.boss ? 4.4 : 3.2);
+    const enemyColors: Record<EnemyArchetype, string> = { scout: '#ff476b', gunner: '#b56cff', bulwark: '#ff9b54' };
+    for (const enemy of this.enemies) if (enemy.alive) drawBlip(enemy.group.position, enemy.boss ? '#ffca68' : enemyColors[enemy.archetype], enemy.boss ? 4.4 : enemy.archetype === 'bulwark' ? 4 : 3.2);
     ctx.fillStyle = '#dffeff'; ctx.shadowColor = '#39e5ef'; ctx.shadowBlur = 10;
     ctx.beginPath(); ctx.moveTo(cx, cy - 5); ctx.lineTo(cx - 4, cy + 4); ctx.lineTo(cx + 4, cy + 4); ctx.closePath(); ctx.fill();
     ctx.restore();

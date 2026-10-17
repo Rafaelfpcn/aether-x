@@ -25,10 +25,12 @@ Três missões conectadas colocam você no comando de uma aeronave de defesa sob
 ## O que você vai encontrar
 
 - Voo tridimensional e combate arcade em uma arena urbana neon.
-- Mira, travamento de alvo, projéteis com colisão contínua e escudo regenerativo.
-- Chefe com fases, ataques anunciados e períodos de vulnerabilidade.
-- HUD tático com radar, telemetria, objetivos e feedback de combate.
-- Efeitos e áudio procedural, sem arquivos de mídia remotos.
+- Pilotagem suavizada, turbo recarregável, mira preditiva e projéteis com colisão contínua.
+- Cinco drones na interceptação, divididos entre batedores, artilheiros e unidades blindadas.
+- Sentinela Alfa em três fases, com rajadas, leques de plasma e disparos carregados anunciados.
+- Pontos por objetivos e esquivas próximas, mira travada e confirmação visual de acertos.
+- HUD tático com radar por classe, telemetria, objetivo, pontuação, escudo e carga do turbo.
+- Efeitos, trilha sintetizada e sons procedurais, sem recursos de mídia externos.
 - Campanha, medalhas, recordes e preferências salvos no navegador.
 - Versão de arquivo único para jogar offline, sem servidor e sem conexão.
 
@@ -45,7 +47,7 @@ Baixe ou clone o projeto e abra **[`AETHER-X-offline.html`](AETHER-X-offline.htm
 | `W` / `S` | Acelerar / frear |
 | `A` / `D` | Guinar |
 | `Espaço` / `C` | Subir / descer |
-| `Shift` | Turbo |
+| `Shift` | Turbo (a carga recarrega ao soltar) |
 | Clique esquerdo / `F` | Disparar |
 | `Esc` / `P` | Pausar ou retomar |
 
@@ -70,6 +72,8 @@ pnpm verify:offline  # confere o pacote sem dependências externas
 ```
 
 O build de produção do Vite fica em `dist/`. O jogo autocontido é gerado em `AETHER-X-offline.html`, na raiz do projeto.
+
+Os testes de invariantes também cobrem a formação de drones da missão de interceptação, a sequência de ataques do chefe, a classificação de esquivas próximas e a recarga de turbo em diferentes taxas de quadros.
 
 ## Como o projeto está organizado
 

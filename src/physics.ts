@@ -8,8 +8,43 @@ export interface ScalableVector {
   multiplyScalar(value: number): unknown;
 }
 
+export type ProjectilePass = 'hit' | 'near-miss' | 'miss';
+
+export interface BoostState {
+  energy: number;
+  active: boolean;
+}
+
 export function applyFrameIndependentDamping<T extends ScalableVector>(velocity: T, rate: number, deltaSeconds: number): void {
   velocity.multiplyScalar(Math.exp(-Math.max(0, rate) * Math.max(0, deltaSeconds)));
+}
+
+export function classifyProjectilePass(distanceSquared: number, hitRadius: number, nearMissRadius: number): ProjectilePass {
+  if (distanceSquared <= hitRadius * hitRadius) return 'hit';
+  if (distanceSquared <= nearMissRadius * nearMissRadius) return 'near-miss';
+  return 'miss';
+}
+
+export function advanceBoostState(
+  energy: number,
+  requested: boolean,
+  wasActive: boolean,
+  deltaSeconds: number,
+  drainPerSecond = 38,
+  rechargePerSecond = 26,
+  restartThreshold = 30,
+): BoostState {
+  const dt = Math.max(0, deltaSeconds);
+  const available = Math.max(0, Math.min(100, energy));
+  if (!requested) return { energy: Math.min(100, available + rechargePerSecond * dt), active: false };
+  if (wasActive) {
+    const nextEnergy = Math.max(0, available - drainPerSecond * dt);
+    return { energy: nextEnergy, active: nextEnergy > 0 };
+  }
+  const recharged = Math.min(100, available + rechargePerSecond * dt);
+  if (recharged < restartThreshold) return { energy: recharged, active: false };
+  const nextEnergy = Math.max(0, recharged - drainPerSecond * dt);
+  return { energy: nextEnergy, active: nextEnergy > 0 };
 }
 
 export function pointToSegmentDistanceSquared(point: VectorLike, start: VectorLike, end: VectorLike): number {

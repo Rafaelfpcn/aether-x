@@ -35,6 +35,10 @@ test('campanha contém três missões sequenciais com objetivos válidos', () =>
   assert.deepEqual(missions.MISSIONS.map((mission) => mission.objectiveTarget), [6, 5, 1]);
   assert.equal(missions.missionIdAt(3), null);
   assert.throws(() => missions.missionById('missing'));
+  const intercept = missions.missionById('intercept');
+  assert.equal(intercept.enemyWave.length, intercept.objectiveTarget);
+  assert.deepEqual([...new Set(intercept.enemyWave)], ['scout', 'gunner', 'bulwark']);
+  assert.deepEqual([1, 2, 3].map((phase) => missions.bossPatternForPhase(missions.missionById('sentinel').bossPatterns, phase)), ['volley', 'fan', 'charge']);
 });
 
 test('amortecimento produz o mesmo fator ao longo de um segundo em 30 e 120 FPS', () => {
@@ -54,6 +58,41 @@ test('colisão por segmento detecta projétil rápido e limita a projeção ao s
   assert.equal(physics.pointToSegmentDistanceSquared({ x: 5, y: 2, z: 0 }, { x: 0, y: 0, z: 0 }, { x: 10, y: 0, z: 0 }), 4);
   assert.equal(physics.pointToSegmentDistanceSquared({ x: 5, y: 0, z: 0 }, { x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 0 }), 25);
   assert.equal(physics.pointToSegmentDistanceSquared({ x: -2, y: 0, z: 0 }, { x: 0, y: 0, z: 0 }, { x: 10, y: 0, z: 0 }), 4);
+  const relativeStart = { x: -5, y: 5, z: 0 };
+  const relativeEnd = { x: 5, y: -5, z: 0 };
+  assert.equal(physics.pointToSegmentDistanceSquared({ x: 0, y: 0, z: 0 }, relativeStart, relativeEnd), 0);
+});
+
+test('classificação de projétil distingue impacto, esquiva próxima e passagem segura', () => {
+  const { classifyProjectilePass, pointToSegmentDistanceSquared } = physics;
+  const start = { x: -80, y: 0, z: 0 };
+  const end = { x: 80, y: 0, z: 0 };
+  const direct = pointToSegmentDistanceSquared({ x: 0, y: 0, z: 0 }, start, end);
+  const close = pointToSegmentDistanceSquared({ x: 0, y: 4, z: 0 }, start, end);
+  const safe = pointToSegmentDistanceSquared({ x: 0, y: 8, z: 0 }, start, end);
+  assert.equal(classifyProjectilePass(direct, 1.52, 5.4), 'hit');
+  assert.equal(classifyProjectilePass(close, 1.52, 5.4), 'near-miss');
+  assert.equal(classifyProjectilePass(safe, 1.52, 5.4), 'miss');
+});
+
+test('turbo drena e recarrega sem depender da taxa de quadros e exige reserva para reativar', () => {
+  const runForSecond = (steps) => {
+    let energy = 100;
+    let active = false;
+    for (let index = 0; index < steps; index++) {
+      const next = physics.advanceBoostState(energy, true, active, 1 / steps);
+      energy = next.energy;
+      active = next.active;
+    }
+    return { energy, active };
+  };
+  const at30 = runForSecond(30);
+  const at120 = runForSecond(120);
+  assert.ok(Math.abs(at30.energy - at120.energy) < 1e-9);
+  assert.ok(at30.active && at120.active);
+  const recovering = physics.advanceBoostState(10, true, false, 1 / 60);
+  assert.equal(recovering.active, false);
+  assert.ok(recovering.energy > 10);
 });
 
 test('máquina de estados permite pausa e repetição e bloqueia saltos inválidos', () => {
