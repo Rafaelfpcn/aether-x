@@ -31,6 +31,10 @@ const js = result.outputFiles.find((file) => file.path.endsWith('.js'))?.text;
 const css = result.outputFiles.find((file) => file.path.endsWith('.css'))?.text;
 if (!js || !css) throw new Error('Não foi possível compilar o JavaScript e o CSS do jogo.');
 
+// A browser closes an inline script on a literal </script sequence, even when it
+// appears inside a JavaScript string. Escape it without changing the runtime value.
+const safeJs = js.replace(/<\/script/gi, (match) => `\\x3C${match.slice(1)}`);
+
 let html = await readFile(shellPath, 'utf8');
 const entry = '<script type="module" src="/src/main.ts"></script>';
 if (!html.includes(entry)) throw new Error('O ponto de entrada do jogo não foi encontrado no HTML.');
@@ -41,7 +45,9 @@ const shellWithoutEntry = html.replace(entry, '');
 if (/<script\b[^>]*\bsrc\s*=|<link\b[^>]*\bhref\s*=|<(?:img|audio|video|source|iframe)\b[^>]*\bsrc\s*=/i.test(shellWithoutEntry)) {
   throw new Error('O HTML de origem contém um recurso remoto que não pode entrar no pacote offline.');
 }
-html = html.replace(entry, `<style>${css}</style>\n    <script>${js}</script>`);
+const inlineBundle = `<style>${css}</style>\n    <script>${safeJs}</script>`;
+// Use a callback so replacement tokens such as $& in bundled vendor code stay intact.
+html = html.replace(entry, () => inlineBundle);
 if (/@import\b|url\(\s*['"]?https?:/i.test(css)) {
   throw new Error('O CSS do HTML offline contém uma dependência externa.');
 }

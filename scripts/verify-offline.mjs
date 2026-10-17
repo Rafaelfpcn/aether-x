@@ -14,7 +14,14 @@ assert.ok(styleStart > 0 && scriptStart > styleStart && scriptEnd > scriptStart,
 const shell = html.slice(0, styleStart);
 assert.doesNotMatch(shell, /<(?:script|link|img|audio|video|source|iframe)\b[^>]*(?:src|href)\s*=/i, 'O HTML não deve carregar recursos externos.');
 assert.doesNotMatch(html.slice(styleStart, scriptStart), /@import\b|url\(\s*['"]?https?:/i, 'O CSS não deve referenciar recursos externos.');
+const script = html.slice(scriptStart + '<script>'.length, scriptEnd);
 assert.match(html.slice(scriptStart, scriptEnd), /^<script>\s*(?:"use strict";)?\(\(\)=>\{/i, 'O código do jogo deve estar no mesmo arquivo e sem importações de módulos.');
+assert.doesNotMatch(script, /<\/script/i, 'O JavaScript embutido não pode encerrar a própria tag script.');
+for (const control of ['#continue-button', '#settings-button', '#launch-button']) {
+  assert.ok(script.includes(control), `A ação ${control} deve estar ligada ao JavaScript do jogo.`);
+}
+assert.equal((html.match(/<script\b/gi) ?? []).length, 1, 'O HTML offline deve conter somente o script do jogo.');
+assert.equal((html.match(/<\/script\s*>/gi) ?? []).length, 1, 'O HTML offline deve fechar somente a tag do script do jogo.');
 for (const required of ['menu-screen', 'briefing-screen', 'pause-screen', 'result-screen', 'settings-screen', 'AETHER-X']) {
   assert.ok(html.includes(required), `Interface ausente no pacote: ${required}`);
 }
