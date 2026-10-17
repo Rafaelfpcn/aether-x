@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#070b12" />
-    <meta name="description" content="AETHER-X: uma campanha arcade de voo e combate em uma metrópole cyberpunk." />
+    <meta name="description" content="AETHER-X: campanha arcade de voo, combate e um modo naturalista sobre um rio brasileiro." />
     <title>AETHER-X // Protocolo de Defesa</title>
   </head>
   <body>
@@ -20,7 +20,7 @@
             <div><p class="eyebrow">AETHER DEFENSE NETWORK</p><h1>AETHER<span>-X</span></h1><p class="brand-sub">PROTOCOLO DE DEFESA // 2089</p></div>
           </div>
           <div class="mission-readout plate">
-            <p class="eyebrow">MISSÃO ATIVA <span id="mission-index">01 / 03</span></p>
+            <p class="eyebrow">MISSÃO ATIVA <span id="mission-index">01 / 06</span></p>
             <h2 id="mission-name">Treinamento de voo</h2>
             <div class="objective-line"><span class="status-dot"></span><span id="objective-text">Atravesse os portais</span></div>
             <div class="objective-track"><span id="objective-fill"></span></div>
@@ -41,7 +41,7 @@
           <div id="toast" class="toast"></div>
           <div id="warning" class="warning"></div>
         </div>
-        <div id="tutorial-tip" class="tutorial-tip is-hidden">W / S VELOCIDADE <i>·</i> A / D GUIAR <i>·</i> ESPAÇO / C ALTITUDE <i>·</i> SHIFT TURBO <i>·</i> CLIQUE / F DISPARAR</div>
+        <div id="tutorial-tip" class="tutorial-tip is-hidden">W / S VELOCIDADE <i>·</i> A / D GUIAR <i>·</i> ESPAÇO / C ALTITUDE <i>·</i> SHIFT TURBO <i>·</i> CLIQUE / F DISPARAR <i>·</i> V CÂMERA</div>
 
         <footer class="hud-bottom">
           <div class="shield-panel plate">
@@ -62,6 +62,7 @@
             <div><span class="control-label">ALTITUDE</span><span class="control-keys"><kbd>ESPAÇO</kbd><kbd>C</kbd></span></div>
             <div><span class="control-label">TURBO</span><span class="control-keys"><kbd>SHIFT</kbd></span></div>
             <div><span class="control-label">DISPARO</span><span class="control-keys"><kbd>CLIQUE</kbd><kbd>F</kbd></span></div>
+            <div><span class="control-label">CÂMERA</span><span class="control-keys"><kbd>V</kbd></span></div>
           </div>
         </footer>
       </section>
@@ -71,18 +72,19 @@
           <div class="menu-copy">
             <p class="eyebrow bright">AETHER DEFENSE NETWORK <span class="live-dot"></span> SISTEMA ONLINE</p>
             <h2>O céu é<br /><em>seu território.</em></h2>
-            <p class="lead">A megacidade caiu na mira dos Sentinelas. Assuma o AETHER-X, aprenda a voar e recupere o espaço aéreo.</p>
-            <div class="campaign-progress"><div><span class="eyebrow">CAMPANHA</span><strong id="campaign-status">01 / 03 MISSÕES LIBERADAS</strong></div><div class="campaign-bar"><span id="campaign-fill"></span></div></div>
+            <p class="lead">A megacidade caiu na mira dos Sentinelas. Domine o AETHER-X, abra caminho pelas torres e leve o combate até as águas do vale.</p>
+            <div class="campaign-progress"><div><span class="eyebrow">CAMPANHA</span><strong id="campaign-status">01 / 06 MISSÕES LIBERADAS</strong></div><div class="campaign-bar"><span id="campaign-fill"></span></div></div>
             <div id="mission-list" class="mission-list"></div>
             <div class="menu-actions"><button id="continue-button" class="button button-primary"><span>INICIAR CAMPANHA</span><b>↗</b></button><button id="settings-button" class="button button-quiet">CONFIGURAÇÕES</button></div>
+            <button id="river-mode-button" class="river-mode-button"><span class="river-glyph" aria-hidden="true">≈</span><span><strong>MODO RIO · RESGATE RIBEIRINHO</strong><small>CENÁRIO NATURALISTA · VOO ARCADE</small></span><b aria-hidden="true">↗</b></button>
             <p class="save-note">PROGRESSO SALVO NESTE NAVEGADOR <span>·</span> SEM CONEXÃO NECESSÁRIA</p>
           </div>
           <aside class="menu-side">
-            <div class="flight-card plate"><div class="card-top"><span class="eyebrow">UNIDADE DE RESPOSTA</span><span class="class-chip">CLASSE X</span></div><div class="drone-silhouette">✳</div><div class="flight-stats"><div><span>VELOCIDADE MÁX.</span><b>420 <small>KM/H</small></b></div><div><span>ARMAMENTO</span><b>PLASMA <small>DUAL</small></b></div><div><span>ASSISTÊNCIA</span><b>MIRA <small>ATIVA</small></b></div></div><div class="card-footer"><span>AE-X / 09</span><span>PRONTO PARA DECOLAR <i></i></span></div></div>
+          <div class="flight-card plate"><div class="card-top"><span class="eyebrow">UNIDADE DE RESPOSTA</span><span class="class-chip">CLASSE X</span></div><div class="drone-silhouette">✳</div><div class="flight-stats"><div><span>VELOCIDADE MÁX.</span><b>420 <small>KM/H</small></b></div><div><span>ARMAMENTO</span><b>PLASMA <small>DUAL</small></b></div><div><span>ASSISTÊNCIA</span><b>MIRA <small>ATIVA</small></b></div></div><div class="card-footer"><span>AE-X / 09</span><span>PRONTO PARA DECOLAR <i></i></span></div></div>
             <div class="best-run plate"><div><span class="eyebrow">MELHOR RESULTADO</span><strong id="best-result">—</strong></div><div class="medal med-none" id="campaign-medal">✦</div></div>
           </aside>
         </div>
-        <div class="menu-footer"><span>PROJECT AETHER-X <b>5.0</b></span><span>TECLADO + MOUSE <i>◆</i> PILOTAGEM ASSISTIDA</span></div>
+        <div class="menu-footer"><span>PROJECT AETHER-X <b>6.0</b></span><span>TECLADO + MOUSE <i>◆</i> PILOTAGEM ASSISTIDA</span></div>
       </section>
 
       <section id="briefing-screen" class="screen modal-screen is-hidden">
@@ -132,7 +134,7 @@
       <h1>AETHER<span>-X</span></h1>
       <p class="guide-copy">Esta é a entrada de desenvolvimento. Para jogar agora, abra a versão já compilada e pronta para uso offline.</p>
       <a class="guide-link" href="./AETHER-X-offline.html">ABRIR A VERSÃO OFFLINE <span aria-hidden="true">↗</span></a>
-      <p class="guide-foot">Um arquivo. Três missões. Nenhuma conexão necessária.</p>
+      <p class="guide-foot">Um arquivo. Seis missões e um modo rio. Nenhuma conexão necessária.</p>
     </aside>
     <script>
       if (location.protocol === 'file:') {

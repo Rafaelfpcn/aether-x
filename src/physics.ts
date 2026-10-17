@@ -10,6 +10,25 @@ export interface ScalableVector {
 
 export type ProjectilePass = 'hit' | 'near-miss' | 'miss';
 
+export interface CameraFollowProfile {
+  height: number;
+  distance: number;
+  lookAhead: number;
+  fieldOfView: number;
+}
+
+export function cameraFollowProfile(speed: number, close = false): CameraFollowProfile {
+  const pace = Math.max(0, Math.min(1, speed / 42));
+  return close
+    ? { height: 2.8 + pace * 0.3, distance: 7.2 + pace * 0.7, lookAhead: 9 + pace * 2, fieldOfView: 58 + pace * 7 }
+    : { height: 4.2 + pace * 0.45, distance: 11.5 + pace * 1.2, lookAhead: 12 + pace * 3, fieldOfView: 55 + pace * 10 };
+}
+
+export function reinforcementBatchSize(aliveCount: number, pendingCount: number, cooldownSeconds: number, threshold = 2, batchSize = 2): number {
+  if (pendingCount <= 0 || cooldownSeconds > 0 || aliveCount > threshold) return 0;
+  return Math.min(Math.max(0, Math.floor(pendingCount)), Math.max(1, Math.floor(batchSize)));
+}
+
 export interface BoostState {
   energy: number;
   active: boolean;

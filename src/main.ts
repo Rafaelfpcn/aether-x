@@ -1,13 +1,13 @@
 import './style.css';
 import { AudioEngine } from './audio';
 import { Game, type GameEvent } from './game';
-import { MISSIONS, missionById, missionIdAt, type MissionDefinition, type MissionId } from './missions';
+import { MISSIONS, missionById, missionIdAt, scenarioById, type CampaignMissionId, type MissionDefinition, type ScenarioId } from './missions';
 import { loadSave, saveData, type MissionRecord, type ThemeId } from './storage';
 import { canTransition, type GameState } from './state';
 
 const state = {
   game: 'menu' as GameState,
-  selectedMission: 'training' as MissionId,
+  selectedScenario: 'training' as ScenarioId,
   activeMission: null as MissionDefinition | null,
   save: loadSave(),
   elapsed: 0,
@@ -48,7 +48,7 @@ function showScreen(id: string | null): void {
 
 function showMenu(): void {
   if (state.game !== 'menu') transition('menu');
-  game.setActive(false);
+  game.setMenuScene();
   $('#pause-button').setAttribute('aria-pressed', 'false');
   state.activeMission = null;
   hud.classList.add('is-hidden');
@@ -66,7 +66,7 @@ function renderMenu(): void {
     const record = state.save.records[mission.id];
     const card = document.createElement('button');
     card.type = 'button';
-    card.className = `mission-card${unlocked ? '' : ' locked'}${mission.id === state.selectedMission ? ' selected' : ''}`;
+    card.className = `mission-card${unlocked ? '' : ' locked'}${mission.id === state.selectedScenario ? ' selected' : ''}`;
     card.disabled = !unlocked;
     card.dataset.mission = mission.id;
     const number = document.createElement('span');
@@ -91,44 +91,44 @@ function renderMenu(): void {
     card.append(number, copy, meta);
     list.append(card);
   }
-  $('#campaign-status').textContent = `${String(state.save.unlocked).padStart(2, '0')} / 03 MISSÕES LIBERADAS`;
+  $('#campaign-status').textContent = `${String(state.save.unlocked).padStart(2, '0')} / ${String(MISSIONS.length).padStart(2, '0')} MISSÕES LIBERADAS`;
   $('#campaign-fill').style.width = `${Math.max(12, (state.save.unlocked / MISSIONS.length) * 100)}%`;
   const records = Object.values(state.save.records);
   const best = records.reduce((highest, record) => Math.max(highest, record?.score ?? 0), 0);
   $('#best-result').textContent = best ? best.toLocaleString('pt-BR') : '—';
   const medals = records.reduce((total, record) => total + (record?.medal ?? 0), 0);
-  $('#campaign-medal').textContent = medals ? `${medals}/09` : '✦';
+  $('#campaign-medal').textContent = medals ? `${medals}/${MISSIONS.length * 3}` : '✦';
   $('#campaign-medal').classList.toggle('med-none', !medals);
   $('#continue-button').querySelector('span')!.textContent = state.save.unlocked > 1 ? 'CONTINUAR CAMPANHA' : 'INICIAR CAMPANHA';
   const next = findNextMission();
   $('#continue-button').setAttribute('aria-label', `Abrir missão ${missionById(next).name}`);
 }
 
-function findNextMission(): MissionId {
+function findNextMission(): CampaignMissionId {
   const unlocked = MISSIONS.filter((mission) => mission.index <= state.save.unlocked);
   const unplayed = unlocked.find((mission) => !state.save.records[mission.id]);
   return unplayed?.id ?? unlocked[unlocked.length - 1]?.id ?? 'training';
 }
 
-function openBriefing(id: MissionId): void {
-  if (missionById(id).index > state.save.unlocked) return;
+function openBriefing(id: ScenarioId): void {
+  const mission = scenarioById(id);
+  if (id !== 'river' && mission.index > state.save.unlocked) return;
   if (state.game === 'menu' || state.game === 'victory' || state.game === 'defeat' || state.game === 'paused') transition('briefing');
-  state.selectedMission = id;
-  const mission = missionById(id);
-  $('#briefing-kicker').textContent = `MISSÃO 0${mission.index} // ${mission.codename}`;
+  state.selectedScenario = id;
+  $('#briefing-kicker').textContent = id === 'river' ? `MODO RIO // ${mission.codename}` : `MISSÃO ${String(mission.index).padStart(2, '0')} // ${mission.codename}`;
   $('#briefing-title').textContent = mission.name;
   $('#briefing-copy').textContent = mission.briefing;
   $('#briefing-objective').textContent = mission.objective;
-  $('#briefing-controls').innerHTML = '<span>CONTROLES</span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><kbd>ESPAÇO</kbd><kbd>C</kbd><kbd>SHIFT</kbd><kbd>CLIQUE / F</kbd>';
-  $('#launch-button').querySelector('span')!.textContent = id === 'training' && !state.save.records.training ? 'INICIAR TREINAMENTO' : 'INICIAR MISSÃO';
+  $('#briefing-controls').innerHTML = '<span>CONTROLES</span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><kbd>ESPAÇO</kbd><kbd>C</kbd><kbd>SHIFT</kbd><kbd>CLIQUE / F</kbd><kbd>V CÂMERA</kbd>';
+  $('#launch-button').querySelector('span')!.textContent = id === 'river' ? 'INICIAR RESGATE' : id === 'training' && !state.save.records.training ? 'INICIAR TREINAMENTO' : 'INICIAR MISSÃO';
   hud.classList.add('is-hidden');
   showScreen('briefing-screen');
 }
 
-function launchMission(id: MissionId): void {
+function launchMission(id: ScenarioId): void {
   if (state.game === 'victory' || state.game === 'defeat') transition('briefing');
-  state.selectedMission = id;
-  state.activeMission = missionById(id);
+  state.selectedScenario = id;
+  state.activeMission = scenarioById(id);
   state.elapsed = 0;
   state.remaining = state.activeMission.durationSeconds;
   state.objectiveProgress = 0;
@@ -139,7 +139,7 @@ function launchMission(id: MissionId): void {
   updateMissionHud(state.activeMission);
   updateTimer();
   updateObjective(0);
-  $('#boss-panel').classList.toggle('is-hidden', id !== 'sentinel');
+  $('#boss-panel').classList.toggle('is-hidden', state.activeMission.objectiveKind !== 'boss');
   $('#boss-panel').classList.remove('exposed');
   $('#tutorial-tip').classList.toggle('is-hidden', id !== 'training');
   $('#score').textContent = '000000';
@@ -153,12 +153,12 @@ function launchMission(id: MissionId): void {
   $('#reticle').classList.remove('locked');
   $('#lock-label').classList.remove('active');
   $('#pause-button').setAttribute('aria-pressed', 'false');
-  audio.setScene(id === 'sentinel' ? 'boss' : 'combat');
+  audio.setScene(state.activeMission.objectiveKind === 'boss' ? 'boss' : 'combat');
   audio.unlock();
 }
 
 function updateMissionHud(mission: MissionDefinition): void {
-  $('#mission-index').textContent = `${String(mission.index).padStart(2, '0')} / 03`;
+  $('#mission-index').textContent = mission.id === 'river' ? 'MODO RIO' : `${String(mission.index).padStart(2, '0')} / ${String(MISSIONS.length).padStart(2, '0')}`;
   $('#mission-name').textContent = mission.name;
   $('#objective-text').textContent = mission.objective;
 }
@@ -172,7 +172,7 @@ function updateObjective(progress: number): void {
   } else if (state.activeMission.objectiveKind === 'kills') {
     $('#objective-text').textContent = `Drones abatidos · ${state.objectiveProgress} / ${state.activeMission.objectiveTarget}`;
   } else {
-    $('#objective-text').textContent = 'Derrube o Sentinela Alfa · 3 fases';
+    $('#objective-text').textContent = `Derrote ${state.activeMission.bossName ?? 'Sentinela Alfa'} · 3 fases`;
   }
 }
 
@@ -205,10 +205,11 @@ function handleGameEvent(event: GameEvent): void {
   } else if (event.type === 'boss') {
     $('#boss-fill').style.width = `${Math.max(0, event.hp) * 100}%`;
     $('#boss-phase').textContent = `FASE 0${event.phase}`;
+    $('#boss-panel').querySelector('.boss-head span')!.textContent = state.activeMission?.bossName ?? 'SENTINELA ALFA';
     $('#boss-state').textContent = event.exposed ? 'NÚCLEO EXPOSTO · DISPARAR AGORA' : 'ESCUDO ATIVO · AGUARDE A ABERTURA';
     $('#boss-panel').classList.toggle('exposed', event.exposed);
   } else if (event.type === 'bossDestroyed') {
-    if (state.activeMission?.id === 'sentinel') finishMission(true);
+    if (state.activeMission?.objectiveKind === 'boss') finishMission(true);
   } else if (event.type === 'score') {
     $('#score').textContent = String(event.value).padStart(6, '0');
   } else if (event.type === 'nearMiss') {
@@ -230,8 +231,9 @@ function handleGameEvent(event: GameEvent): void {
     state.damageTimer = window.setTimeout(() => $('#damage-flash').classList.remove('active'), 190);
     if (event.shield <= 0) finishMission(false, 'O escudo do AETHER-X foi esgotado.');
   } else if (event.type === 'warning') {
+    const boss = state.activeMission?.id === 'dam' ? 'GUARDIÃO' : 'ALFA';
     const labels = event.boss
-      ? { volley: 'RAJADA DO ALFA · DESVIE', fan: 'LEQUE DO ALFA · MUDE A ROTA', charge: 'LANÇA DO ALFA · QUEBRE O ÂNGULO' }
+      ? { volley: `RAJADA DO ${boss} · DESVIE`, fan: `LEQUE DO ${boss} · MUDE A ROTA`, charge: `LANÇA DO ${boss} · QUEBRE O ÂNGULO` }
       : { volley: 'DISPARO HOSTIL · MANOBRE', fan: 'LEQUE DO GUNNER · SUBA OU DESÇA', charge: 'CANHÃO PESADO · DESVIE' };
     $('#warning').textContent = labels[event.pattern];
     $('#warning').classList.add('active');
@@ -268,7 +270,7 @@ function resumeMission(): void {
   transition('playing');
   showScreen(null);
   game.setActive(true);
-  audio.setScene(state.activeMission?.id === 'sentinel' ? 'boss' : 'combat');
+  audio.setScene(state.activeMission?.objectiveKind === 'boss' ? 'boss' : 'combat');
   $('#pause-button').setAttribute('aria-pressed', 'false');
 }
 
@@ -285,10 +287,12 @@ function finishMission(success: boolean, reason?: string): void {
   if (success) {
     transition('victory');
     audio.play('win');
-    state.save.unlocked = Math.max(state.save.unlocked, Math.min(3, mission.index + 1));
-    const old = state.save.records[mission.id];
-    const record: MissionRecord = { medal, score, time: state.elapsed, shield };
-    if (!old || score >= old.score) state.save.records[mission.id] = record;
+    if (mission.id !== 'river') {
+      state.save.unlocked = Math.max(state.save.unlocked, Math.min(MISSIONS.length, mission.index + 1));
+      const old = state.save.records[mission.id];
+      const record: MissionRecord = { medal, score, time: state.elapsed, shield };
+      if (!old || score >= old.score) state.save.records[mission.id] = record;
+    }
   } else {
     transition('defeat');
     audio.play('fail');
@@ -306,19 +310,23 @@ function awardMedal(mission: MissionDefinition, elapsed: number, shield: number)
 function showResult(success: boolean, mission: MissionDefinition, medal: number, score: number, reason?: string): void {
   showScreen('result-screen');
   $('#result-kicker').textContent = success ? 'MISSÃO CONCLUÍDA' : 'MISSÃO INTERROMPIDA';
-  $('#result-title').textContent = success ? (mission.id === 'sentinel' ? 'A cidade voltou a respirar.' : 'Espaço aéreo recuperado.') : 'A missão ainda não terminou.';
-  $('#result-copy').textContent = success ? (mission.id === 'sentinel' ? 'O núcleo caiu. A rede de defesa da cidade está novamente sob controle.' : 'Bom trabalho, piloto. Os sistemas da cidade voltaram a ficar online.') : reason ?? (state.remaining <= 0 ? 'O tempo acabou antes de concluir o objetivo.' : 'Recalibre sua rota e tente novamente.');
+  $('#result-title').textContent = success
+    ? mission.id === 'river' ? 'A margem está segura.' : mission.id === 'dam' || mission.id === 'sentinel' ? 'A cidade voltou a respirar.' : 'Espaço aéreo recuperado.'
+    : 'A missão ainda não terminou.';
+  $('#result-copy').textContent = success
+    ? mission.id === 'river' ? 'Os drones recuaram. A casa e a comunidade ribeirinha estão a salvo.' : mission.id === 'dam' ? 'O guardião caiu e as comportas foram desarmadas. O vale está protegido.' : mission.id === 'sentinel' ? 'O núcleo caiu. A rede de defesa da cidade está novamente sob controle.' : 'Bom trabalho, piloto. Os sistemas da cidade voltaram a ficar online.'
+    : reason ?? (state.remaining <= 0 ? 'O tempo acabou antes de concluir o objetivo.' : 'Recalibre sua rota e tente novamente.');
   $('#result-medal').textContent = '★'.repeat(medal) + '☆'.repeat(3 - medal);
   $('#result-medal').classList.toggle('med-none', !medal);
   $('#result-time').textContent = formatTime(state.elapsed);
   $('#result-shield').textContent = `${Math.round(game.getPlayerShield())}%`;
   $('#result-score').textContent = score.toLocaleString('pt-BR').padStart(4, '0');
-  const next = missionIdAt(mission.index);
+  const next = mission.id === 'river' ? null : missionIdAt(mission.index);
   const primary = $('#result-primary') as HTMLButtonElement;
   primary.disabled = success && !next;
   primary.classList.toggle('is-hidden', success && !next);
   $('#result-retry').querySelector('span')?.remove();
-  $('#result-retry').textContent = success ? 'REJOGAR MISSÃO' : 'TENTAR NOVAMENTE';
+  $('#result-retry').textContent = success ? (mission.id === 'river' ? 'REPETIR MODO RIO' : 'REJOGAR MISSÃO') : 'TENTAR NOVAMENTE';
   primary.querySelector('span')!.textContent = success ? 'PRÓXIMA MISSÃO' : 'TENTAR NOVAMENTE';
   if (!success) primary.classList.add('is-hidden');
   renderMenu();
@@ -358,18 +366,20 @@ function bindUi(): void {
     const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-mission]');
     if (!button || button.disabled) return;
     audio.unlock();
-    openBriefing(button.dataset.mission as MissionId);
+    openBriefing(button.dataset.mission as CampaignMissionId);
   });
   $('#continue-button').addEventListener('click', () => { audio.unlock(); openBriefing(findNextMission()); });
+  $('#river-mode-button').addEventListener('click', () => { audio.unlock(); openBriefing('river'); });
   $('#settings-button').addEventListener('click', openSettings);
-  $('#launch-button').addEventListener('click', () => launchMission(state.selectedMission));
+  $('#launch-button').addEventListener('click', () => launchMission(state.selectedScenario));
   $('#pause-button').addEventListener('click', pauseMission);
   $('#resume-button').addEventListener('click', resumeMission);
-  $('#restart-button').addEventListener('click', () => launchMission(state.selectedMission));
-  $('#result-retry').addEventListener('click', () => launchMission(state.selectedMission));
+  $('#restart-button').addEventListener('click', () => launchMission(state.selectedScenario));
+  $('#result-retry').addEventListener('click', () => launchMission(state.selectedScenario));
   $('#result-primary').addEventListener('click', () => {
-    if (state.game === 'defeat') { launchMission(state.selectedMission); return; }
-    const next = missionIdAt(missionById(state.selectedMission).index);
+    if (state.game === 'defeat') { launchMission(state.selectedScenario); return; }
+    if (state.selectedScenario === 'river') return;
+    const next = missionIdAt(missionById(state.selectedScenario).index);
     if (next) openBriefing(next);
   });
   document.querySelectorAll<HTMLButtonElement>('[data-action="menu"]').forEach((button) => button.addEventListener('click', showMenu));

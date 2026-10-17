@@ -2,11 +2,11 @@
 
 <img src="assets/aether-x-banner.svg" alt="AETHER-X — protocolo de defesa" width="100%">
 
-### Uma mini-campanha arcade de voo e combate em uma metrópole cyberpunk.
+### Um jogo arcade de voo e combate em uma campanha de seis missões.
 
 [**JOGAR AGORA · HTML OFFLINE**](AETHER-X-offline.html)
 
-Voe. Intercepte. Sobreviva à Sentinela.
+Voe pela megacidade. Cruze o cânion. Defenda as águas do vale.
 
 </div>
 
@@ -14,31 +14,37 @@ Voe. Intercepte. Sobreviva à Sentinela.
 
 ## A campanha
 
-Três missões conectadas colocam você no comando de uma aeronave de defesa sobre uma cidade neon. Aprenda a pilotar, proteja o espaço aéreo e enfrente uma sentinela de combate que muda de estratégia a cada fase.
+Assuma o quadricóptero AETHER-X e recupere o espaço aéreo. A campanha combina treinamento, interceptação, combate contra chefes e desafios de navegação em cenários diferentes.
 
-| Missão | Objetivo | Desafio |
+| Missão | Cenário | Objetivo |
 | --- | --- | --- |
-| **01 · Treinamento** | Atravesse seis portais e domine o voo | Aprenda aceleração, altitude, turbo e disparo |
-| **02 · Interceptação** | Abata cinco drones antes do tempo acabar | Preserve o escudo sob pressão |
-| **03 · Sentinela Alfa** | Derrote o chefe em três fases | Leia os avisos, evite ataques e aproveite as aberturas |
+| **01 · Treinamento de voo** | Megacidade neon | Atravesse seis portais e aprenda os controles |
+| **02 · Interceptação** | Perímetro urbano | Abata cinco drones antes do tempo acabar |
+| **03 · Sentinela Alfa** | Centro da cidade | Derrote o chefe em três fases |
+| **04 · Porto sob Chuva** | Porto industrial | Elimine sete drones entre guindastes e contêineres |
+| **05 · Corredor das Torres** | Cânion urbano | Atravesse seis balizas seguindo uma rota estreita |
+| **06 · Última Comporta** | Represa | Derrote o guardião e impeça a inundação do vale |
 
-## O que você vai encontrar
+As missões são liberadas em sequência. Medalhas, recordes e preferências ficam salvos no navegador.
 
-- Voo tridimensional e combate arcade em uma arena urbana neon.
-- Pilotagem suavizada, turbo recarregável, mira preditiva e projéteis com colisão contínua.
-- Cinco drones na interceptação, divididos entre batedores, artilheiros e unidades blindadas.
-- Sentinela Alfa em três fases, com rajadas, leques de plasma e disparos carregados anunciados.
-- Pontos por objetivos e esquivas próximas, mira travada e confirmação visual de acertos.
-- HUD tático com radar por classe, telemetria, objetivo, pontuação, escudo e carga do turbo.
-- Efeitos, trilha sintetizada e sons procedurais, sem recursos de mídia externos.
-- Campanha, medalhas, recordes e preferências salvos no navegador.
-- Versão de arquivo único para jogar offline, sem servidor e sem conexão.
+## Modo Rio
 
-## Jogar
+Uma expedição separada da campanha leva a batalha para um vale fluvial naturalista. O cenário inclui água com textura animada, cachoeira, mata nas margens, a casa elevada de um pescador e uma canoa no cais. Defenda a comunidade abatendo oito drones.
 
-Baixe ou clone o projeto e abra **[`AETHER-X-offline.html`](AETHER-X-offline.html)** em um navegador desktop moderno. Esse arquivo já contém o jogo, os estilos e o Three.js. Não precisa instalar dependências para jogar.
+O vale é uma composição original inspirada em paisagens ribeirinhas brasileiras, sem representar um local específico.
 
-> `index.html` é a entrada usada durante o desenvolvimento com Vite. Se for aberto diretamente por caminho de arquivo, ele explica como abrir a versão offline.
+O modo mantém a física arcade, a pilotagem por teclado e o disparo com mouse. Os elementos do cenário são gerados localmente pelo jogo; não há downloads de modelos, texturas ou áudio durante a partida.
+
+## Voo e combate
+
+- Aceleração com inércia, altitude livre, turbo recarregável e limites de arena.
+- Câmera de perseguição suavizada, com enquadramento e campo de visão que reagem à velocidade.
+- Pressione `V` durante a missão para alternar para uma câmera próxima.
+- Mira assistida, travamento de alvo, canhões de plasma e acertos com colisão contínua.
+- Drones batedores, artilheiros e blindados; chefes com ataques anunciados, três padrões e janelas vulneráveis.
+- Reforços entram em grupos no Porto e no Modo Rio para manter o combate legível.
+- Radar, telemetria, escudo, objetivos, avisos de ataque e pontuação por esquivas próximas.
+- Áudio e música sintetizados no navegador.
 
 ### Controles
 
@@ -47,9 +53,14 @@ Baixe ou clone o projeto e abra **[`AETHER-X-offline.html`](AETHER-X-offline.htm
 | `W` / `S` | Acelerar / frear |
 | `A` / `D` | Guinar |
 | `Espaço` / `C` | Subir / descer |
-| `Shift` | Turbo (a carga recarrega ao soltar) |
+| `Shift` | Turbo |
 | Clique esquerdo / `F` | Disparar |
+| `V` | Alternar câmera de perseguição / próxima |
 | `Esc` / `P` | Pausar ou retomar |
+
+## Jogar offline
+
+Baixe ou clone o projeto e abra **[`AETHER-X-offline.html`](AETHER-X-offline.html)** em um navegador desktop moderno com aceleração gráfica. Esse arquivo contém o jogo, o Three.js e os estilos; não precisa de servidor, instalação ou internet para jogar.
 
 ## Desenvolvimento
 
@@ -62,7 +73,7 @@ pnpm dev
 
 O Vite inicia a versão de desenvolvimento em `http://127.0.0.1:5173`.
 
-### Comandos
+### Comandos de validação
 
 ```powershell
 pnpm typecheck       # verifica os tipos TypeScript
@@ -71,21 +82,19 @@ pnpm build           # compila o jogo e atualiza o HTML offline
 pnpm verify:offline  # confere o pacote sem dependências externas
 ```
 
-O build de produção do Vite fica em `dist/`. O jogo autocontido é gerado em `AETHER-X-offline.html`, na raiz do projeto.
-
-Os testes de invariantes também cobrem a formação de drones da missão de interceptação, a sequência de ataques do chefe, a classificação de esquivas próximas e a recarga de turbo em diferentes taxas de quadros.
-
-## Como o projeto está organizado
+## Estrutura
 
 ```text
 src/
   audio.ts       áudio procedural
+  drone-model.ts geometria do AETHER-X
   game.ts        mundo Three.js, voo, combate, radar e efeitos
-  main.ts        interface, estados, missão e progressão
-  missions.ts    objetivos, limites e critérios de medalha
-  physics.ts     amortecimento por tempo e colisão por segmento
-  state.ts       transições permitidas entre estados do jogo
-  storage.ts     progresso local versionado e validado
+  main.ts        interface, estados, missões e progressão
+  missions.ts   campanha, encontros, paletas e modo Rio
+  physics.ts    amortecimento, turbo, colisões e câmera
+  scenery.ts    cenários locais da cidade, porto, torres, represa e rio
+  state.ts      transições permitidas entre estados
+  storage.ts    progresso local versionado e validado
 tests/
   invariants.test.mjs
 scripts/
@@ -95,13 +104,13 @@ assets/
   aether-x-banner.svg
 ```
 
-O jogo funciona sem backend. O progresso e as preferências ficam no armazenamento local do navegador. Para contribuir, abra uma issue descrevendo a mudança ou envie um pull request com o contexto e os passos para reproduzi-la.
+O projeto funciona sem backend. A versão atual migra o progresso salvo pela edição anterior de três missões sem descartar recordes, volume, tema ou áudio.
 
 ---
 
 <div align="center">
 
 **AETHER-X // PROTOCOLO DE DEFESA · 2089**  
-Construído para voos curtos, combates intensos e mais uma tentativa.
+Seis missões. Um modo especial. Voo arcade sem conexão.
 
 </div>

@@ -1,4 +1,4 @@
-import type { MissionId } from './missions';
+import type { CampaignMissionId } from './missions';
 
 export type ThemeId = 'cyan' | 'crimson' | 'gold';
 
@@ -10,29 +10,31 @@ export interface MissionRecord {
 }
 
 export interface SaveData {
-  version: 1;
+  version: 2;
   unlocked: number;
-  records: Partial<Record<MissionId, MissionRecord>>;
+  records: Partial<Record<CampaignMissionId, MissionRecord>>;
   volume: number;
   muted: boolean;
   theme: ThemeId;
 }
 
-const SAVE_KEY = 'aether-x-save-v1';
+const SAVE_KEY = 'aether-x-save-v2';
+const LEGACY_SAVE_KEY = 'aether-x-save-v1';
 
 export function defaultSave(): SaveData {
-  return { version: 1, unlocked: 1, records: {}, volume: 0.7, muted: false, theme: 'cyan' };
+  return { version: 2, unlocked: 1, records: {}, volume: 0.7, muted: false, theme: 'cyan' };
 }
 
 export function loadSave(): SaveData {
   try {
-    const raw = localStorage.getItem(SAVE_KEY);
+    const current = localStorage.getItem(SAVE_KEY);
+    const raw = current ?? localStorage.getItem(LEGACY_SAVE_KEY);
     if (!raw) return defaultSave();
     const value = JSON.parse(raw) as Partial<SaveData>;
     const safeTheme: ThemeId = value.theme === 'crimson' || value.theme === 'gold' ? value.theme : 'cyan';
     const rawRecords = value.records && typeof value.records === 'object' ? value.records as Record<string, unknown> : {};
     const records: SaveData['records'] = {};
-    for (const id of ['training', 'intercept', 'sentinel'] as const) {
+    for (const id of ['training', 'intercept', 'sentinel', 'harbor', 'skyline', 'dam'] as const) {
       const candidate = rawRecords[id];
       if (!candidate || typeof candidate !== 'object') continue;
       const record = candidate as Partial<MissionRecord>;
@@ -49,14 +51,18 @@ export function loadSave(): SaveData {
       };
     }
     const volume = Number(value.volume ?? 0.7);
-    return {
-      version: 1,
-      unlocked: Math.max(1, Math.min(3, Math.floor(Number(value.unlocked) || 1))),
+    const normalized: SaveData = {
+      version: 2,
+      unlocked: Math.max(1, Math.min(6, Math.max(Math.floor(Number(value.unlocked) || 1), records.sentinel ? 4 : 1))),
       records,
       volume: Number.isFinite(volume) ? Math.max(0, Math.min(1, volume)) : 0.7,
       muted: value.muted === true,
       theme: safeTheme,
     };
+    if (!current) {
+      try { localStorage.setItem(SAVE_KEY, JSON.stringify(normalized)); } catch { /* A migração pode esperar até o próximo salvamento. */ }
+    }
+    return normalized;
   } catch {
     return defaultSave();
   }

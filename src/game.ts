@@ -2,11 +2,12 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-import { bossPatternForPhase, type BossAttackPattern, type EnemyArchetype, type MissionDefinition, type MissionId } from './missions';
+import { bossPatternForPhase, missionById, type BossAttackPattern, type EnemyArchetype, type MissionDefinition, type ScenarioEnvironment, type ScenarioId } from './missions';
 import type { AudioEngine } from './audio';
 import type { ThemeId } from './storage';
-import { advanceBoostState, applyFrameIndependentDamping, classifyProjectilePass, pointToSegmentDistanceSquared } from './physics';
+import { advanceBoostState, applyFrameIndependentDamping, cameraFollowProfile, classifyProjectilePass, pointToSegmentDistanceSquared, reinforcementBatchSize } from './physics';
 import { createFuselageGeometry, PLAYER_ROTOR_LAYOUT } from './drone-model';
+import { buildScenarioScenery } from './scenery';
 
 export type GameEvent =
   | { type: 'telemetry'; speed: number; altitude: number; boost: number }
@@ -37,6 +38,7 @@ interface Enemy {
   alive: boolean;
   boss: boolean;
   archetype: EnemyArchetype;
+  spawnIndex: number;
   hp: number;
   maxHp: number;
   angle: number;
@@ -98,6 +100,8 @@ export class Game {
   private readonly rotors: Rotor[] = [];
   private readonly gates: Gate[] = [];
   private readonly enemies: Enemy[] = [];
+  private pendingEnemyWave: { archetype: EnemyArchetype; index: number }[] = [];
+  private waveSpawnTimer = 0;
   private readonly bolts: Bolt[] = [];
   private readonly bursts: Burst[] = [];
   private readonly themeMaterials: THREE.MeshStandardMaterial[] = [];
@@ -111,7 +115,7 @@ export class Game {
   private readonly cameraOffset = new THREE.Vector3(0, 4.5, 12);
   private readonly forward = new THREE.Vector3();
   private mission: MissionDefinition | null = null;
-  private mode: MissionId | null = null;
+  private mode: ScenarioId | null = null;
   private active = false;
   private firing = false;
   private lastShot = 0;
@@ -129,6 +133,9 @@ export class Game {
   private cameraShake = 0;
   private arenaGrid: THREE.GridHelper | null = null;
   private readonly arenaAccents: THREE.MeshBasicMaterial[] = [];
+  private readonly environmentGroups = new Map<ScenarioEnvironment, THREE.Group>();
+  private readonly environmentFollowers = new Map<ScenarioEnvironment, THREE.Object3D>();
+  private readonly animatedTextures: THREE.Texture[] = [];
   private bossPhase = 1;
   private bossCycle = 0;
   private bossExposed = true;
@@ -136,6 +143,7 @@ export class Game {
   private disposed = false;
   private elapsed = 0;
   private boundaryToastCooldown = 0;
+  private closeCamera = false;
   private readonly onKeyDown = (event: KeyboardEvent): void => this.handleKeyDown(event);
   private readonly onKeyUp = (event: KeyboardEvent): void => this.handleKeyUp(event);
   private readonly onPointerDown = (event: PointerEvent): void => this.handlePointerDown(event);
@@ -203,6 +211,21 @@ export class Game {
     if (active && this.clock.running === false) this.clock.start();
   }
 
+  setMenuScene(): void {
+    this.setActive(false);
+    this.mission = null;
+    this.mode = null;
+    this.setEnvironment('city');
+    this.applyMissionPalette(missionById('training'));
+    this.drone.position.set(0, 8, 0);
+    this.drone.rotation.set(0, 0, 0);
+    this.droneVelocity.set(0, 0, 0);
+    this.camera.position.set(0, 12, 20);
+    this.camera.lookAt(0, 8, -10);
+    this.camera.fov = 58;
+    this.camera.updateProjectionMatrix();
+  }
+
   startMission(mission: MissionDefinition): void {
     this.setActive(false);
     this.clearDynamicObjects();
@@ -224,7 +247,7 @@ export class Game {
     this.lastTelemetry = 0;
     this.lastShot = 0;
     this.boundaryToastCooldown = 0;
-    this.drone.position.set(0, 8, 0);
+    this.drone.position.set(0, mission.environment === 'river' ? 10 : 8, mission.environment === 'river' ? 24 : 0);
     this.previousPlayerPosition.copy(this.drone.position);
     this.drone.rotation.set(0, 0, 0);
     this.droneVelocity.set(0, 0, 0);
@@ -232,10 +255,12 @@ export class Game {
     this.camera.lookAt(0, 8, -10);
     this.lockedEnemy = null;
     this.applyMissionPalette(mission);
+    this.setEnvironment(mission.environment);
     this.gates.forEach((gate, index) => {
       gate.collected = false;
-      gate.group.visible = mission.id === 'training';
-      gate.group.position.copy(this.gatePosition(index));
+      gate.group.visible = mission.objectiveKind === 'gates' && index < mission.objectiveTarget;
+      const point = mission.gatePath?.[index];
+      gate.group.position.copy(point ? new THREE.Vector3(...point) : this.gatePosition(index));
       gate.baseY = gate.group.position.y;
       const base = gate.group.position.clone().multiplyScalar(0.94);
       base.y = gate.group.position.y;
@@ -244,17 +269,25 @@ export class Game {
       gate.ring.material.color.setHex(color);
       gate.ring.material.emissive.setHex(color);
     });
-    if (mission.id === 'intercept') {
+    this.pendingEnemyWave = [];
+    this.waveSpawnTimer = 0;
+    if (mission.objectiveKind === 'kills') {
       const wave = mission.enemyWave ?? [];
-      wave.forEach((archetype, index) => this.enemies.push(this.createEnemy(index, false, wave.length, archetype)));
-    } else if (mission.id === 'sentinel') {
+      const staged = mission.id === 'harbor' || mission.id === 'river';
+      const initialCount = staged ? Math.min(3, wave.length) : wave.length;
+      wave.forEach((archetype, index) => {
+        if (index < initialCount) this.enemies.push(this.createEnemy(index, false, wave.length, archetype));
+        else this.pendingEnemyWave.push({ archetype, index });
+      });
+      this.waveSpawnTimer = staged ? 3.8 : 0;
+    } else if (mission.objectiveKind === 'boss') {
       this.enemies.push(this.createEnemy(0, true, 1));
     }
     this.callbacks.onEvent({ type: 'damage', shield: this.shield });
     this.callbacks.onEvent({ type: 'gate', count: 0 });
     this.callbacks.onEvent({ type: 'enemyDestroyed', count: 0 });
     this.callbacks.onEvent({ type: 'score', value: 0 });
-    this.callbacks.onEvent({ type: 'boss', hp: 1, phase: 1, exposed: true });
+    if (mission.objectiveKind === 'boss') this.callbacks.onEvent({ type: 'boss', hp: 1, phase: 1, exposed: true });
     this.callbacks.onEvent({ type: 'telemetry', speed: 0, altitude: 16, boost: 100 });
     this.audio.play('gate');
   }
@@ -275,11 +308,20 @@ export class Game {
     window.removeEventListener('resize', this.onResize);
     this.renderer.dispose();
     this.composer.dispose();
+    const disposedTextures = new Set<THREE.Texture>();
     this.scene.traverse((object) => {
       if (object instanceof THREE.Mesh || object instanceof THREE.Points || object instanceof THREE.Line) {
         object.geometry.dispose();
         const materials = Array.isArray(object.material) ? object.material : [object.material];
-        materials.forEach((material) => material.dispose());
+        materials.forEach((material) => {
+          for (const value of Object.values(material)) {
+            if (value instanceof THREE.Texture && !disposedTextures.has(value)) {
+              disposedTextures.add(value);
+              value.dispose();
+            }
+          }
+          material.dispose();
+        });
       }
     });
     this.container.replaceChildren();
@@ -295,31 +337,31 @@ export class Game {
   }
 
   private buildEnvironment(): void {
+    const city = new THREE.Group();
     const grid = new THREE.GridHelper(270, 108, 0x266e81, 0x163041);
     this.arenaGrid = grid;
     const gridMaterial = grid.material as THREE.Material;
     gridMaterial.transparent = true;
     gridMaterial.opacity = 0.46;
-    this.scene.add(grid);
+    city.add(grid);
     const floor = new THREE.Mesh(
       new THREE.CircleGeometry(185, 96),
       new THREE.MeshBasicMaterial({ color: 0x122131, transparent: true, opacity: 0.56, side: THREE.DoubleSide }),
     );
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = -0.12;
-    this.scene.add(floor);
+    city.add(floor);
 
     for (const [index, radius] of [24, 48, 72].entries()) {
       const material = new THREE.MeshBasicMaterial({ color: index === 0 ? 0x2d9eb7 : 0x24445d, transparent: true, opacity: index === 0 ? 0.28 : 0.2 });
       const ring = new THREE.Mesh(new THREE.TorusGeometry(radius, 0.075, 6, 144), material);
       ring.rotation.x = Math.PI / 2;
       ring.position.y = -0.04;
-      this.scene.add(ring);
+      city.add(ring);
       this.arenaAccents.push(material);
     }
 
     const random = this.seededRandom(80989);
-    const city = new THREE.Group();
     const buildingGeometry = new THREE.BoxGeometry(1, 1, 1);
     const buildingMaterials = [0x1a2a3c, 0x203349, 0x142536].map((color) => new THREE.MeshStandardMaterial({ color, emissive: 0x07111d, emissiveIntensity: 0.55, metalness: 0.12, roughness: 0.76 }));
     const beaconMaterials = [0x36c4d8, 0xd4537c, 0xe0b45f].map((color) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.86 }));
@@ -347,8 +389,6 @@ export class Game {
         city.add(windowLight);
       }
     }
-    this.scene.add(city);
-
     const starPositions = new Float32Array(420 * 3);
     for (let i = 0; i < 420; i++) {
       const angle = random() * Math.PI * 2;
@@ -359,13 +399,26 @@ export class Game {
     }
     const stars = new THREE.BufferGeometry();
     stars.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
-    this.scene.add(new THREE.Points(stars, new THREE.PointsMaterial({ color: 0x7bdce7, size: 0.65, transparent: true, opacity: 0.65, sizeAttenuation: true })));
-    this.buildArenaMarkers();
+    city.add(new THREE.Points(stars, new THREE.PointsMaterial({ color: 0x7bdce7, size: 0.65, transparent: true, opacity: 0.65, sizeAttenuation: true })));
+    this.buildArenaMarkers(city);
+    this.scene.add(city);
+    this.environmentGroups.set('city', city);
+    for (const environment of ['harbor', 'skyline', 'dam', 'river'] as const) {
+      const layer = buildScenarioScenery(environment);
+      layer.root.visible = false;
+      this.scene.add(layer.root);
+      this.environmentGroups.set(environment, layer.root);
+      if (layer.followCamera) this.environmentFollowers.set(environment, layer.followCamera);
+      this.animatedTextures.push(...layer.animatedTextures);
+    }
   }
 
   private applyMissionPalette(mission: MissionDefinition): void {
     this.scene.background = new THREE.Color(mission.palette.background);
-    if (this.scene.fog instanceof THREE.FogExp2) this.scene.fog.color.setHex(mission.palette.fog);
+    if (this.scene.fog instanceof THREE.FogExp2) {
+      this.scene.fog.color.setHex(mission.palette.fog);
+      this.scene.fog.density = mission.environment === 'river' ? 0.0021 : mission.environment === 'harbor' ? 0.0046 : 0.0035;
+    }
     this.arenaAccents.forEach((material, index) => material.color.setHex(index === 0 ? mission.palette.gridCenter : mission.palette.gridLines));
     const materials = this.arenaGrid?.material;
     if (!materials) return;
@@ -377,7 +430,11 @@ export class Game {
     });
   }
 
-  private buildArenaMarkers(): void {
+  private setEnvironment(environment: ScenarioEnvironment): void {
+    for (const [kind, group] of this.environmentGroups) group.visible = kind === environment;
+  }
+
+  private buildArenaMarkers(parent: THREE.Group): void {
     for (let index = 0; index < 24; index++) {
       const angle = (index / 24) * Math.PI * 2;
       const radius = 88;
@@ -387,7 +444,7 @@ export class Game {
       );
       marker.position.set(Math.cos(angle) * radius, 1.7, Math.sin(angle) * radius);
       marker.lookAt(0, 1.7, 0);
-      this.scene.add(marker);
+      parent.add(marker);
     }
   }
 
@@ -511,7 +568,7 @@ export class Game {
 
   private createEnemy(index: number, boss: boolean, total: number, archetype: EnemyArchetype = 'scout'): Enemy {
     const group = new THREE.Group();
-    const scale = boss ? 2.65 : archetype === 'bulwark' ? 1.25 : archetype === 'gunner' ? 1.08 : 0.86;
+    const scale = boss ? (this.mission?.id === 'dam' ? 3.05 : 2.65) : archetype === 'bulwark' ? 1.25 : archetype === 'gunner' ? 1.08 : 0.86;
     group.scale.setScalar(scale);
     const archetypeColor: Record<EnemyArchetype, number> = { scout: 0xff476b, gunner: 0xb56cff, bulwark: 0xff9b54 };
     const archetypeEmissive: Record<EnemyArchetype, number> = { scout: 0x641226, gunner: 0x35134d, bulwark: 0x54200e };
@@ -541,13 +598,17 @@ export class Game {
     const angle = boss ? Math.PI : (index / total) * Math.PI * 2;
     const radius = boss ? 40 : archetype === 'scout' ? 32 + (index % 2) * 13 : archetype === 'gunner' ? 52 + (index % 2) * 5 : 42;
     const baseHeight = boss ? 15 : archetype === 'scout' ? 10 + (index % 3) * 5 : archetype === 'gunner' ? 19 : 13;
-    group.position.set(Math.cos(angle) * radius, baseHeight, Math.sin(angle) * radius);
+    if (!boss && this.mission?.environment === 'river') {
+      group.position.set(((index % 4) - 1.5) * 11, baseHeight, -48 + index * 14);
+    } else {
+      group.position.set(Math.cos(angle) * radius, baseHeight, Math.sin(angle) * radius);
+    }
     this.scene.add(group);
     const bossPattern = bossPatternForPhase(this.mission?.bossPatterns, 1);
     return {
-      group, core, coreMaterial, rings, alive: true, boss, archetype,
-      hp: boss ? 720 : archetype === 'scout' ? 70 : archetype === 'gunner' ? 120 : 200,
-      maxHp: boss ? 720 : archetype === 'scout' ? 70 : archetype === 'gunner' ? 120 : 200,
+      group, core, coreMaterial, rings, alive: true, boss, archetype, spawnIndex: index,
+      hp: boss ? (this.mission?.bossHealth ?? 720) : archetype === 'scout' ? 70 : archetype === 'gunner' ? 120 : 200,
+      maxHp: boss ? (this.mission?.bossHealth ?? 720) : archetype === 'scout' ? 70 : archetype === 'gunner' ? 120 : 200,
       angle, radius, baseHeight,
       previousPosition: group.position.clone(), velocity: new THREE.Vector3(),
       orbitSpeed: boss ? 0.13 : (archetype === 'scout' ? 0.52 : archetype === 'gunner' ? 0.18 : 0.11) * (index % 2 === 0 ? 1 : -1),
@@ -583,6 +644,11 @@ export class Game {
     if (!this.active) return;
     this.audio.unlock();
     const key = event.key.toLowerCase();
+    if (key === 'v' && !event.repeat) {
+      this.closeCamera = !this.closeCamera;
+      this.callbacks.onEvent({ type: 'toast', text: this.closeCamera ? 'CÂMERA PRÓXIMA' : 'CÂMERA DE PERSEGUIÇÃO' });
+      return;
+    }
     if ([' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)) event.preventDefault();
     this.keys.add(key);
     if (key === 'f') this.firing = true;
@@ -636,19 +702,23 @@ export class Game {
     this.updateBolts(dt);
     this.updateBursts(dt);
     this.updateLock();
-    this.cameraOffset.set(0, 4.5, 12).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.drone.rotation.y);
+    const cameraProfile = cameraFollowProfile(this.droneVelocity.length(), this.closeCamera);
+    this.cameraOffset.set(0, cameraProfile.height, cameraProfile.distance).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.drone.rotation.y);
     const desiredPosition = this.drone.position.clone().add(this.cameraOffset);
     this.cameraShake = Math.max(0, this.cameraShake - dt * 3.8);
     desiredPosition.x += Math.sin(elapsed * 57) * this.cameraShake;
     desiredPosition.y += Math.cos(elapsed * 43) * this.cameraShake * 0.38;
-    this.camera.position.lerp(desiredPosition, 1 - Math.exp(-5.3 * dt));
-    const viewTarget = this.drone.position.clone().add(this.forward.set(0, 0, -12).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.drone.rotation.y));
+    this.camera.position.lerp(desiredPosition, 1 - Math.exp(-5.8 * dt));
+    this.environmentFollowers.get(this.mission?.environment ?? 'city')?.position.copy(this.camera.position);
+    this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, cameraProfile.fieldOfView, 1 - Math.exp(-2.8 * dt));
+    this.camera.updateProjectionMatrix();
+    const viewTarget = this.drone.position.clone().add(this.forward.set(0, 0, -cameraProfile.lookAhead).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.drone.rotation.y));
     this.camera.lookAt(viewTarget);
     if (this.elapsed - this.lastTelemetry > 0.1) {
       this.lastTelemetry = this.elapsed;
       this.callbacks.onEvent({
         type: 'telemetry',
-        speed: Math.round(this.droneVelocity.length() * 6.5),
+        speed: Math.round(this.droneVelocity.length() * 10),
         altitude: Math.round(this.drone.position.y * 2),
         boost: Math.round(this.boostEnergy),
       });
@@ -665,7 +735,8 @@ export class Game {
     this.boosting = boostState.active;
     const boost = this.boosting;
     const acceleration = boost ? 42 : 28;
-    const turnSpeed = 2.1;
+    const speedRatio = Math.min(1, this.droneVelocity.length() / 42);
+    const turnSpeed = 2.35 * (1 - speedRatio * 0.18);
     if (key('a', 'arrowleft')) this.drone.rotation.y += turnSpeed * dt;
     if (key('d', 'arrowright')) this.drone.rotation.y -= turnSpeed * dt;
     const heading = this.forward.set(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.drone.rotation.y);
@@ -697,6 +768,8 @@ export class Game {
 
   private updateAmbient(elapsed: number, dt: number): void {
     if (this.coreCrystal) this.coreCrystal.rotation.y += dt * 0.32;
+    const riverTexture = this.mode === 'river' ? 0.11 : this.mode === 'harbor' || this.mode === 'dam' ? 0.045 : 0;
+    if (riverTexture) this.animatedTextures.forEach((texture) => { texture.offset.y -= dt * riverTexture; });
     this.gates.forEach((gate, index) => {
       if (!gate.group.visible) return;
       gate.ring.rotation.z += dt * (0.75 + index * 0.025);
@@ -705,7 +778,7 @@ export class Game {
   }
 
   private updateGates(dt: number, elapsed: number): void {
-    if (this.mode !== 'training') return;
+    if (this.mission?.objectiveKind !== 'gates') return;
     for (const gate of this.gates) {
       if (gate.collected || this.drone.position.distanceTo(gate.group.position) > 5.4) continue;
       gate.collected = true;
@@ -722,13 +795,34 @@ export class Game {
   }
 
   private updateEnemies(dt: number, elapsed: number): void {
+    if (this.pendingEnemyWave.length) {
+      this.waveSpawnTimer = Math.max(0, this.waveSpawnTimer - dt);
+      const activeCount = this.enemies.filter((enemy) => enemy.alive && !enemy.boss).length;
+      const batchSize = reinforcementBatchSize(activeCount, this.pendingEnemyWave.length, this.waveSpawnTimer);
+      if (batchSize > 0) {
+        const reinforcements = this.pendingEnemyWave.splice(0, batchSize);
+        for (const enemy of reinforcements) {
+          this.enemies.push(this.createEnemy(enemy.index, false, this.mission?.enemyWave?.length ?? 1, enemy.archetype));
+        }
+        this.callbacks.onEvent({ type: 'toast', text: this.pendingEnemyWave.length ? `REFORÇOS DETECTADOS · ${this.pendingEnemyWave.length} NA RESERVA` : 'ÚLTIMO GRUPO DE REFORÇOS NO SETOR' });
+        this.audio.play('warning');
+        this.waveSpawnTimer = this.pendingEnemyWave.length ? 4.2 : 0;
+      }
+    }
     for (const enemy of this.enemies) {
       if (!enemy.alive) continue;
       if (!enemy.boss) {
-        enemy.angle += enemy.orbitSpeed * dt;
-        const weave = enemy.archetype === 'scout' ? Math.sin(elapsed * 2.7 + enemy.angle) * 5 : enemy.archetype === 'gunner' ? Math.sin(elapsed * 0.9 + enemy.angle) * 2 : Math.sin(elapsed * 0.55 + enemy.angle) * 1.1;
-        enemy.group.position.set(Math.cos(enemy.angle) * enemy.radius + weave, enemy.baseHeight + Math.sin(elapsed * (enemy.archetype === 'scout' ? 2.8 : 1.05) + enemy.angle) * (enemy.archetype === 'bulwark' ? 1.1 : 2.4), Math.sin(enemy.angle) * enemy.radius);
-        enemy.group.rotation.z = Math.sin(elapsed * (enemy.archetype === 'scout' ? 2.6 : 0.8) + enemy.angle) * (enemy.archetype === 'scout' ? 0.26 : 0.08);
+        if (this.mission?.environment === 'river') {
+          const lane = (enemy.spawnIndex % 4) - 1.5;
+          const heightWave = Math.sin(elapsed * 1.05 + enemy.spawnIndex) * 1.4;
+          enemy.group.position.set(lane * 11 + Math.sin(elapsed * 0.72 + enemy.spawnIndex) * 3.5, enemy.baseHeight + heightWave, -48 + enemy.spawnIndex * 14 + Math.sin(elapsed * 0.55 + enemy.spawnIndex) * 2.5);
+          enemy.group.rotation.z = Math.sin(elapsed * 0.92 + enemy.spawnIndex) * 0.09;
+        } else {
+          enemy.angle += enemy.orbitSpeed * dt;
+          const weave = enemy.archetype === 'scout' ? Math.sin(elapsed * 2.7 + enemy.angle) * 5 : enemy.archetype === 'gunner' ? Math.sin(elapsed * 0.9 + enemy.angle) * 2 : Math.sin(elapsed * 0.55 + enemy.angle) * 1.1;
+          enemy.group.position.set(Math.cos(enemy.angle) * enemy.radius + weave, enemy.baseHeight + Math.sin(elapsed * (enemy.archetype === 'scout' ? 2.8 : 1.05) + enemy.angle) * (enemy.archetype === 'bulwark' ? 1.1 : 2.4), Math.sin(enemy.angle) * enemy.radius);
+          enemy.group.rotation.z = Math.sin(elapsed * (enemy.archetype === 'scout' ? 2.6 : 0.8) + enemy.angle) * (enemy.archetype === 'scout' ? 0.26 : 0.08);
+        }
       } else {
         enemy.group.position.set(Math.sin(elapsed * 0.17) * 10, 14 + Math.sin(elapsed * 0.85) * 2.2, -40 + Math.sin(elapsed * 0.21) * 7);
         this.updateBossPhase(enemy, dt);
@@ -748,7 +842,7 @@ export class Game {
   }
 
   private updateBossPhase(boss: Enemy, dt: number): void {
-    const nextPhase = boss.hp > 480 ? 1 : boss.hp > 240 ? 2 : 3;
+    const nextPhase = boss.hp > boss.maxHp * (2 / 3) ? 1 : boss.hp > boss.maxHp * (1 / 3) ? 2 : 3;
     if (nextPhase !== this.bossPhase) {
       this.bossPhase = nextPhase;
       this.bossCycle = 0;
@@ -932,7 +1026,7 @@ export class Game {
   private damagePlayer(): void {
     if (this.damageCooldown > 0) return;
     this.damageCooldown = 0.46;
-    this.shield = Math.max(0, this.shield - (this.mode === 'sentinel' ? 22 : 18));
+    this.shield = Math.max(0, this.mission?.objectiveKind === 'boss' ? this.mode === 'dam' ? 23 : 22 : 18);
     this.cameraShake = Math.max(this.cameraShake, 1.05);
     this.audio.play('damage');
     this.callbacks.onEvent({ type: 'damage', shield: this.shield });
@@ -1049,6 +1143,8 @@ export class Game {
       });
     }
     this.enemies.length = 0;
+    this.pendingEnemyWave = [];
+    this.waveSpawnTimer = 0;
     for (const bolt of this.bolts) this.scene.remove(bolt.mesh);
     this.bolts.length = 0;
     for (const burst of this.bursts) {
