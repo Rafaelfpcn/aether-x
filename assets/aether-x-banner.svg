@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 360" role="img" aria-labelledby="title desc">
+  <title id="title">AETHER-X — Protocolo de Defesa</title>
+  <desc id="desc">Banner cyberpunk com horizonte de cidade neon e título AETHER-X.</desc>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0d2431"/>
+      <stop offset=".52" stop-color="#08111c"/>
+      <stop offset="1" stop-color="#100d1b"/>
+    </linearGradient>
+    <linearGradient id="cyan" x1="0" y1="0" x2="1" y2="0">
+      <stop stop-color="#83fbff"/>
+      <stop offset=".48" stop-color="#39e5ef"/>
+      <stop offset="1" stop-color="#a5f5ff"/>
+    </linearGradient>
+    <linearGradient id="fade" x1="0" y1="0" x2="1" y2="0">
+      <stop stop-color="#39e5ef" stop-opacity="0"/>
+      <stop offset=".5" stop-color="#39e5ef" stop-opacity=".75"/>
+      <stop offset="1" stop-color="#ff476b" stop-opacity="0"/>
+    </linearGradient>
+    <pattern id="stars" width="117" height="81" patternUnits="userSpaceOnUse">
+      <circle cx="12" cy="17" r="1" fill="#b8faff" opacity=".5"/>
+      <circle cx="74" cy="52" r="1" fill="#ff7188" opacity=".42"/>
+      <circle cx="102" cy="9" r=".8" fill="#fff" opacity=".4"/>
+    </pattern>
+    <filter id="glow" x="-.4" y="-.5" width="1.8" height="2">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="1200" height="360" rx="18" fill="url(#sky)"/>
+  <rect width="1200" height="360" rx="18" fill="url(#stars)"/>
+  <path d="M0 252h70v-38h28v38h26v-67h45v67h25v-28h25v28h29v-86h50v86h28v-48h26v48h39v-112h53v112h28v-54h26v54h32v-78h46v78h30v-43h27v43h29v-94h54v94h29v-39h26v39h37v-126h58v126h30v-55h26v55h37v-88h51v88h30v-36h28v36h46v108H0z" fill="#08131e" stroke="#164250" stroke-width="2"/>
+  <path d="M0 264h1200M0 278h1200M0 294h1200M0 313h1200M0 338h1200" stroke="url(#fade)" stroke-width="1" opacity=".55"/>
+  <path d="M0 251h1200" stroke="#39e5ef" stroke-width="2" opacity=".6" filter="url(#glow)"/>
+  <g fill="#39e5ef" opacity=".75">
+    <path d="M153 226h2v11h-2zM161 226h2v11h-2zM293 181h2v17h-2zM302 181h2v17h-2zM431 150h2v19h-2zM440 150h2v19h-2zM741 184h2v20h-2zM751 184h2v20h-2zM1043 165h2v18h-2zM1053 165h2v18h-2z"/>
+  </g>
+  <g fill="#ff476b" opacity=".7">
+    <path d="M249 218h2v13h-2zM258 218h2v13h-2zM553 190h2v15h-2zM562 190h2v15h-2zM953 202h2v14h-2zM962 202h2v14h-2z"/>
+  </g>
+  <g transform="translate(78 52)">
+    <path d="M5 0h42l-5 5H10z" fill="#39e5ef" opacity=".85"/>
+    <text x="0" y="33" fill="#a5bac4" font-family="Arial,sans-serif" font-size="12" font-weight="700" letter-spacing="4">AETHER DEFENSE NETWORK</text>
+    <text x="-3" y="132" fill="url(#cyan)" font-family="Arial,sans-serif" font-size="92" font-weight="900" letter-spacing="-5" filter="url(#glow)">AETHER-X</text>
+    <text x="2" y="168" fill="#e8f5f8" font-family="Arial,sans-serif" font-size="16" font-weight="700" letter-spacing="5">PROTOCOLO DE DEFESA <tspan fill="#39e5ef">//</tspan> 2089</text>
+    <path d="M2 190h330" stroke="url(#fade)" stroke-width="2"/>
+    <text x="2" y="218" fill="#88a1af" font-family="Arial,sans-serif" font-size="12" letter-spacing="3">VOE · INTERCEPTE · SOBREVIVA</text>
+  </g>
+  <g transform="translate(1038 66)" fill="none" stroke="#39e5ef" opacity=".75">
+    <path d="M36 0 72 36 36 72 0 36z" stroke-width="1.5"/>
+    <path d="M36 12 60 36 36 60 12 36z" stroke-opacity=".55"/>
+    <path d="M36 25v22M25 36h22" stroke-width="1.5"/>
+    <circle cx="36" cy="36" r="3" fill="#ff476b" stroke="none"/>
+  </g>
+  <rect x="1" y="1" width="1198" height="358" rx="17" fill="none" stroke="#39e5ef" stroke-opacity=".2"/>
+</svg>
