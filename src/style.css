@@ -120,9 +120,10 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--cyan); outl
 .radar-wrap { width: 180px; padding: 7px 9px 8px; border-radius: 6px; }
 .radar-label { display: flex; justify-content: space-between; color: #a1c5ce; font-size: 7px; font-weight: 800; letter-spacing: .13em; }
 #radar { display: block; width: 154px; height: 154px; margin: 3px auto 0; }
-.controls-hint { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; min-height: 68px; padding: 12px; align-content: center; }
-.controls-hint > div { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
-.controls-hint span { color: #8297a3; font-size: 7px; font-weight: 800; letter-spacing: .1em; margin-left: 3px; }
+.controls-hint { display: grid; grid-template-columns: 1fr; gap: 5px; width: min(250px, 100%); min-height: 0; padding: 10px 12px; align-content: center; justify-self: end; }
+.controls-hint > div { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0; white-space: nowrap; }
+.controls-hint .control-label { color: #91a5b1; font-size: 8px; font-weight: 800; letter-spacing: .1em; }
+.controls-hint .control-keys { display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
 kbd { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border: 1px solid rgba(114, 205, 216, .27); border-radius: 3px; background: rgba(57, 229, 239, .06); color: #c9e8ec; font: 700 8px var(--font); }
 
 /* Campaign menu and dialogs */

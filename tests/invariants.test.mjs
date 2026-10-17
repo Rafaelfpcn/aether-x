@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -21,11 +22,12 @@ async function loadModule(entry) {
   return import(url);
 }
 
-const [missions, physics, states, storage] = await Promise.all([
+const [missions, physics, states, storage, droneModel] = await Promise.all([
   loadModule('src/missions.ts'),
   loadModule('src/physics.ts'),
   loadModule('src/state.ts'),
   loadModule('src/storage.ts'),
+  loadModule('src/drone-model.ts'),
 ]);
 
 test('campanha contém três missões sequenciais com objetivos válidos', () => {
@@ -123,4 +125,49 @@ test('salvamento local tolera dados inválidos e limita configurações e record
   assert.equal(loaded.records.intercept, undefined);
   storage.saveData(loaded);
   assert.ok(data.get('aether-x-save-v1'));
+});
+
+test('fuselagem do AETHER-X é simétrica e aponta para o eixo frontal -Z', () => {
+  const geometry = droneModel.createFuselageGeometry();
+  const positions = geometry.getAttribute('position');
+  const quantize = (value) => Number(value.toFixed(4));
+  const pointKey = (x, y, z) => `${quantize(x)},${quantize(y)},${quantize(z)}`;
+  const points = new Set();
+  let minZ = Infinity;
+  let maxZ = -Infinity;
+
+  for (let index = 0; index < positions.count; index++) {
+    const x = positions.getX(index);
+    const y = positions.getY(index);
+    const z = positions.getZ(index);
+    points.add(pointKey(x, y, z));
+    minZ = Math.min(minZ, z);
+    maxZ = Math.max(maxZ, z);
+  }
+
+  for (let index = 0; index < positions.count; index++) {
+    assert.ok(points.has(pointKey(-positions.getX(index), positions.getY(index), positions.getZ(index))), 'cada vértice deve ter um par espelhado');
+  }
+  assert.ok(minZ < -1.5, 'a ponta frontal deve ficar no eixo -Z');
+  assert.ok(maxZ > 1.3, 'a traseira deve se estender para +Z');
+  assert.equal(droneModel.PLAYER_ROTOR_LAYOUT.length, 4);
+  assert.deepEqual(
+    droneModel.PLAYER_ROTOR_LAYOUT.map(({ x, z }) => `${x},${z}`).sort(),
+    ['-3.1,-2.35', '-3.1,2.35', '3.1,-2.35', '3.1,2.35'],
+  );
+  geometry.dispose();
+});
+
+test('atalhos do HUD usam quatro linhas agrupadas sem grade horizontal apertada', async () => {
+  const [html, css] = await Promise.all([
+    readFile(path.join(projectRoot, 'index.html'), 'utf8'),
+    readFile(path.join(projectRoot, 'src/style.css'), 'utf8'),
+  ]);
+  const panel = html.match(/<div class="controls-hint plate"[\s\S]*?<\/div>\s*<\/footer>/)?.[0];
+  assert.ok(panel, 'painel de controles encontrado');
+  const rows = [...panel.matchAll(/<div><span class="control-label">([^<]+)<\/span><span class="control-keys">([\s\S]*?)<\/span><\/div>/g)];
+  assert.deepEqual(rows.map(([, label]) => label), ['VOO', 'ALTITUDE', 'TURBO', 'DISPARO']);
+  assert.ok(rows.every(([, , keys]) => (keys.match(/<kbd>/g) ?? []).length > 0));
+  assert.match(css, /\.controls-hint\s*\{[^}]*grid-template-columns:\s*1fr/);
+  assert.match(css, /\.controls-hint\s*>\s*div\s*\{[^}]*justify-content:\s*space-between/);
 });

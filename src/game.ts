@@ -6,6 +6,7 @@ import { bossPatternForPhase, type BossAttackPattern, type EnemyArchetype, type 
 import type { AudioEngine } from './audio';
 import type { ThemeId } from './storage';
 import { advanceBoostState, applyFrameIndependentDamping, classifyProjectilePass, pointToSegmentDistanceSquared } from './physics';
+import { createFuselageGeometry, PLAYER_ROTOR_LAYOUT } from './drone-model';
 
 export type GameEvent =
   | { type: 'telemetry'; speed: number; altitude: number; boost: number }
@@ -392,90 +393,88 @@ export class Game {
   private buildDrone(): void {
     const armor = new THREE.MeshStandardMaterial({ color: 0x34495d, emissive: 0x081723, emissiveIntensity: 0.9, metalness: 0.38, roughness: 0.4 });
     const carbon = new THREE.MeshStandardMaterial({ color: 0x172635, emissive: 0x07131d, emissiveIntensity: 0.7, metalness: 0.22, roughness: 0.52 });
+    const hull = new THREE.MeshStandardMaterial({ color: 0x263a4d, emissive: 0x07131d, emissiveIntensity: 0.65, metalness: 0.24, roughness: 0.54, flatShading: true });
     const chrome = new THREE.MeshStandardMaterial({ color: 0x9ab0ba, metalness: 0.94, roughness: 0.16 });
     const copper = new THREE.MeshStandardMaterial({ color: 0xb86742, metalness: 0.85, roughness: 0.28 });
-    const glass = new THREE.MeshPhysicalMaterial({ color: 0x0c3444, metalness: 0.16, roughness: 0.12, transmission: 0.22, transparent: true, opacity: 0.9, clearcoat: 0.9 });
+    const glass = new THREE.MeshPhysicalMaterial({ color: 0x1a5268, emissive: 0x061923, emissiveIntensity: 0.35, metalness: 0.08, roughness: 0.2, transmission: 0.12, transparent: true, opacity: 0.9, clearcoat: 0.9 });
     const neon = this.makeNeonMaterial();
     this.drone.position.set(0, 8, 0);
     const core = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.OctahedronGeometry(1.0, 1), armor);
-    body.scale.set(1.25, 0.65, 1.55);
+    const body = new THREE.Mesh(createFuselageGeometry(), hull);
     core.add(body);
-    const canopy = new THREE.Mesh(new THREE.SphereGeometry(0.78, 20, 16), glass);
-    canopy.scale.set(1, 0.56, 1.3);
-    canopy.position.set(0, 0.28, -0.18);
+    const canopy = new THREE.Mesh(new THREE.SphereGeometry(0.55, 20, 14), glass);
+    canopy.scale.set(1, 0.42, 1.12);
+    canopy.position.set(0, 0.39, -0.16);
     core.add(canopy);
     const coreCrystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.38, 1), neon);
-    coreCrystal.position.set(0, 0.5, -0.15);
+    coreCrystal.position.set(0, 0.66, -0.2);
     core.add(coreCrystal);
     const coreRing = new THREE.Mesh(new THREE.TorusGeometry(0.86, 0.045, 10, 48), neon);
     coreRing.rotation.x = Math.PI / 2;
     coreRing.position.y = -0.02;
     core.add(coreRing);
     this.drone.add(core);
-    const coreLight = new THREE.PointLight(this.themeColor, 4.2, 17, 2);
-    coreLight.position.set(0, 0.4, -0.25);
+    const coreLight = new THREE.PointLight(this.themeColor, 3.2, 13, 2);
+    coreLight.position.set(0, 0.45, -0.2);
     this.drone.add(coreLight);
 
-    for (const side of [-1, 1]) {
-      for (const forwardSide of [-1, 1]) {
-        const rotorX = side * 3.1;
-        const rotorZ = forwardSide * 2.35;
-        const arm = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.2, 1), armor);
-        arm.position.set(rotorX * 0.5, -0.08, rotorZ * 0.5);
-        arm.rotation.y = Math.atan2(rotorX, rotorZ);
-        arm.scale.z = Math.hypot(rotorX, rotorZ) * 1.25;
-        this.drone.add(arm);
-        const conduit = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.1, 1), neon);
-        conduit.position.set(rotorX * 0.48, -0.19, rotorZ * 0.48);
-        conduit.rotation.y = Math.atan2(rotorX, rotorZ);
-        conduit.scale.z = Math.hypot(rotorX, rotorZ) * 1.18;
-        this.drone.add(conduit);
+    for (const { x: rotorX, z: rotorZ, direction } of PLAYER_ROTOR_LAYOUT) {
+      const armLength = Math.hypot(rotorX, rotorZ);
+      const armYaw = Math.atan2(rotorX, rotorZ);
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.2, 1), armor);
+      arm.position.set(rotorX * 0.5, -0.08, rotorZ * 0.5);
+      arm.rotation.y = armYaw;
+      arm.scale.z = armLength;
+      this.drone.add(arm);
+      const conduit = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.1, 1), neon);
+      conduit.position.set(rotorX * 0.5, -0.19, rotorZ * 0.5);
+      conduit.rotation.y = armYaw;
+      conduit.scale.z = armLength;
+      this.drone.add(conduit);
 
-        const rotor = new THREE.Group();
-        rotor.position.set(rotorX, 0.05, rotorZ);
-        const mount = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.58, 0.42, 16), armor);
-        rotor.add(mount);
-        const collar = new THREE.Mesh(new THREE.TorusGeometry(0.47, 0.045, 8, 36), copper);
-        collar.rotation.x = Math.PI / 2;
-        collar.position.y = -0.01;
-        rotor.add(collar);
-        const guard = new THREE.Mesh(new THREE.TorusGeometry(1.12, 0.075, 10, 48), carbon);
-        guard.rotation.x = Math.PI / 2;
-        guard.position.y = 0.23;
-        rotor.add(guard);
-        const guardGlow = new THREE.Mesh(new THREE.TorusGeometry(1.12, 0.024, 8, 48), neon);
-        guardGlow.rotation.x = Math.PI / 2;
-        guardGlow.position.y = 0.24;
-        rotor.add(guardGlow);
-        const blades = new THREE.Group();
-        for (let bladeIndex = 0; bladeIndex < 3; bladeIndex++) {
-          const blade = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.025, 0.88), chrome);
-          blade.position.z = 0.5;
-          blade.rotation.y = (bladeIndex / 3) * Math.PI * 2;
-          blades.add(blade);
-        }
-        rotor.add(blades);
-        const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.25, 0.26, 12), neon);
-        hub.position.y = 0.28;
-        rotor.add(hub);
-        this.drone.add(rotor);
-        this.rotors.push({ group: blades, direction: side === forwardSide ? 1 : -1 });
+      const rotor = new THREE.Group();
+      rotor.position.set(rotorX, 0.05, rotorZ);
+      const mount = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.58, 0.42, 16), armor);
+      rotor.add(mount);
+      const collar = new THREE.Mesh(new THREE.TorusGeometry(0.47, 0.045, 8, 36), copper);
+      collar.rotation.x = Math.PI / 2;
+      collar.position.y = -0.01;
+      rotor.add(collar);
+      const guard = new THREE.Mesh(new THREE.TorusGeometry(1.12, 0.075, 10, 48), carbon);
+      guard.rotation.x = Math.PI / 2;
+      guard.position.y = 0.23;
+      rotor.add(guard);
+      const guardGlow = new THREE.Mesh(new THREE.TorusGeometry(1.12, 0.024, 8, 48), neon);
+      guardGlow.rotation.x = Math.PI / 2;
+      guardGlow.position.y = 0.24;
+      rotor.add(guardGlow);
+      const blades = new THREE.Group();
+      for (let bladeIndex = 0; bladeIndex < 3; bladeIndex++) {
+        const blade = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.025, 0.88), chrome);
+        blade.position.z = 0.5;
+        blade.rotation.y = (bladeIndex / 3) * Math.PI * 2;
+        blades.add(blade);
       }
+      rotor.add(blades);
+      const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.25, 0.26, 12), neon);
+      hub.position.y = 0.28;
+      rotor.add(hub);
+      this.drone.add(rotor);
+      this.rotors.push({ group: blades, direction });
     }
 
     for (const side of [-1, 1]) {
-      const mount = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.34, 0.76), armor);
-      mount.position.set(side * 0.92, -0.28, -1.1);
+      const mount = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.28, 0.62), armor);
+      mount.position.set(side * 0.64, -0.14, -0.68);
       this.drone.add(mount);
       const barrel = new THREE.Group();
-      barrel.position.set(side * 0.92, -0.27, -1.28);
+      barrel.position.set(side * 0.86, -0.16, -0.82);
       const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.11, 1.18, 12), chrome);
       tube.rotation.x = Math.PI / 2;
-      tube.position.z = -0.4;
+      tube.position.z = -0.38;
       barrel.add(tube);
       const muzzle = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.026, 8, 16), neon);
-      muzzle.position.z = -0.98;
+      muzzle.position.z = -0.96;
       barrel.add(muzzle);
       this.drone.add(barrel);
     }
