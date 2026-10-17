@@ -96,7 +96,6 @@ export class Game {
   private readonly bloom: UnrealBloomPass;
   private readonly clock = new THREE.Clock();
   private readonly drone = new THREE.Group();
-  private coreCrystal: THREE.Mesh | null = null;
   private readonly rotors: Rotor[] = [];
   private readonly gates: Gate[] = [];
   private readonly enemies: Enemy[] = [];
@@ -464,13 +463,49 @@ export class Game {
     canopy.scale.set(1, 0.42, 1.12);
     canopy.position.set(0, 0.39, -0.16);
     core.add(canopy);
-    this.coreCrystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.38, 1), neon);
-    this.coreCrystal.position.set(0, 0.66, -0.2);
-    core.add(this.coreCrystal);
+    const cameraHousing = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.3, 0.2, 12), armor);
+    cameraHousing.position.set(0, 0.42, -0.48);
+    core.add(cameraHousing);
+    const cameraLens = new THREE.Mesh(
+      new THREE.SphereGeometry(0.13, 16, 10),
+      new THREE.MeshPhysicalMaterial({ color: 0x65e9f0, emissive: 0x1599ac, emissiveIntensity: 1.5, metalness: 0.35, roughness: 0.12, clearcoat: 1 }),
+    );
+    cameraLens.scale.set(1, 0.82, 0.42);
+    cameraLens.position.set(0, 0.45, -0.59);
+    core.add(cameraLens);
+    const lensBezel = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.025, 8, 24), chrome);
+    lensBezel.position.set(0, 0.45, -0.61);
+    core.add(lensBezel);
     const coreRing = new THREE.Mesh(new THREE.TorusGeometry(0.86, 0.045, 10, 48), neon);
     coreRing.rotation.x = Math.PI / 2;
     coreRing.position.y = -0.02;
     core.add(coreRing);
+
+    const armorPanel = new THREE.BoxGeometry(0.72, 0.13, 0.9);
+    const panelInset = new THREE.BoxGeometry(0.48, 0.045, 0.58);
+    for (const side of [-1, 1]) {
+      const panel = new THREE.Mesh(armorPanel, armor);
+      panel.position.set(side * 0.53, 0.24, 0.24);
+      panel.rotation.z = side * -0.14;
+      core.add(panel);
+      const inset = new THREE.Mesh(panelInset, carbon);
+      inset.position.set(side * 0.53, 0.32, 0.25);
+      inset.rotation.z = side * -0.14;
+      core.add(inset);
+
+      const sideLight = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.045, 0.52), neon);
+      sideLight.position.set(side * 0.91, 0.1, -0.42);
+      sideLight.rotation.y = side * 0.16;
+      core.add(sideLight);
+
+      const vent = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.035, 0.42), chrome);
+      vent.position.set(side * 0.34, 0.2, 0.88);
+      vent.rotation.y = side * 0.22;
+      core.add(vent);
+    }
+    const spine = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 0.64), neon);
+    spine.position.set(0, 0.25, 0.62);
+    core.add(spine);
     this.drone.add(core);
     const coreLight = new THREE.PointLight(this.themeColor, 3.2, 13, 2);
     coreLight.position.set(0, 0.45, -0.2);
@@ -507,9 +542,16 @@ export class Game {
       guardGlow.position.y = 0.24;
       rotor.add(guardGlow);
       const blades = new THREE.Group();
+      const propWash = new THREE.Mesh(
+        new THREE.CircleGeometry(0.82, 32),
+        new THREE.MeshBasicMaterial({ color: this.themeColor, transparent: true, opacity: 0.055, side: THREE.DoubleSide, depthWrite: false }),
+      );
+      propWash.rotation.x = -Math.PI / 2;
+      propWash.position.y = 0.08;
+      rotor.add(propWash);
       for (let bladeIndex = 0; bladeIndex < 3; bladeIndex++) {
-        const blade = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.025, 0.88), chrome);
-        blade.position.z = 0.5;
+        const blade = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.035, 1.05), chrome);
+        blade.position.z = 0.56;
         blade.rotation.y = (bladeIndex / 3) * Math.PI * 2;
         blades.add(blade);
       }
@@ -536,9 +578,19 @@ export class Game {
       barrel.add(muzzle);
       this.drone.add(barrel);
     }
-    const skid = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.12, 0.15), chrome);
-    skid.position.set(0, -1.0, 0.4);
-    this.drone.add(skid);
+    for (const side of [-1, 1]) {
+      const strut = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.1, 0.86, 8), armor);
+      strut.position.set(side * 1.03, -0.67, 0.26);
+      strut.rotation.z = side * -0.28;
+      this.drone.add(strut);
+      const skidPath = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(side * 0.78, -0.78, -0.5),
+        new THREE.Vector3(side * 1.28, -1.12, -0.2),
+        new THREE.Vector3(side * 1.3, -1.14, 0.95),
+        new THREE.Vector3(side * 0.96, -0.78, 1.18),
+      ]);
+      this.drone.add(new THREE.Mesh(new THREE.TubeGeometry(skidPath, 18, 0.065, 7, false), chrome));
+    }
     this.scene.add(this.drone);
   }
 
@@ -767,7 +819,6 @@ export class Game {
   }
 
   private updateAmbient(elapsed: number, dt: number): void {
-    if (this.coreCrystal) this.coreCrystal.rotation.y += dt * 0.32;
     const riverTexture = this.mode === 'river' ? 0.11 : this.mode === 'harbor' || this.mode === 'dam' ? 0.045 : 0;
     if (riverTexture) this.animatedTextures.forEach((texture) => { texture.offset.y -= dt * riverTexture; });
     this.gates.forEach((gate, index) => {
