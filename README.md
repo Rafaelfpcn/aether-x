@@ -2,102 +2,113 @@
 
 <img src="assets/aether-x-banner.svg" alt="AETHER-X — protocolo de defesa" width="100%">
 
-### Uma mini-campanha arcade de voo e combate em uma metrópole cyberpunk.
+### Jogo aeroespacial 3D em arquivo único HTML — 100% offline e sem dependências externas.
 
 [**JOGAR AGORA · HTML OFFLINE**](AETHER-X-offline.html)
 
-Voe. Intercepte. Sobreviva à Sentinela.
+Campanha Cyberpunk · Operações Realistas · Mundos Abertos · Hangar & Upgrades · Vale da Cachoeira
 
 </div>
 
 ---
 
-## A campanha
+## 🚀 Visão Geral do Jogo
 
-Três missões conectadas colocam você no comando de uma aeronave de defesa sobre uma cidade neon. Aprenda a pilotar, proteja o espaço aéreo e enfrente uma sentinela de combate que muda de estratégia a cada fase.
+O **AETHER-X** é um jogo completo de combate e simulação aeroespacial desenvolvido em Three.js e TypeScript, projetado para rodar diretamente do navegador sem necessidade de servidor ou conexão com a internet.
 
-| Missão | Objetivo | Desafio |
-| --- | --- | --- |
-| **01 · Treinamento** | Atravesse seis portais e domine o voo | Aprenda aceleração, altitude, turbo e disparo |
-| **02 · Interceptação** | Abata cinco drones antes do tempo acabar | Preserve o escudo sob pressão |
-| **03 · Sentinela Alfa** | Derrote o chefe em três fases | Leia os avisos, evite ataques e aproveite as aberturas |
+### Destaques
+- **Dois Universos Visuais**:
+  - **Modo Realista**: Aerodinâmica com inércia, arrasto, rajadas de vento, efeito solo, recarga de munição balística traçante (`R`), OSD com horizonte artificial e telemetria GPS.
+  - **Modo Cyberpunk**: Ação arcade neon de alta velocidade, escudo defletor de plasma e canhões de pulso contínuo.
+- **Dois Modelos de Voo Independentes** (`FlightModel`):
+  - **Arcade**: Voo responsivo, agilidade instantânea e mira assistida.
+  - **Simulador**: Sustentação física, inércia de curva, ângulo de atitude e resposta a turbulência.
+  - *Alternável livremente no menu de Configurações, independente do estilo visual.*
+- **Câmera Dinâmica com Mira Desobstruída**:
+  - Enquadramento inteligente que compensa manobras de mergulho, garantindo que o drone nunca obstrua o retículo central contra alvos.
+- **Estabilização Ativa de Voo (GPS & Altitude Hold)**:
+  - Sistema de controle de voo que anula ventos de até 21 km/h e freia ativamente a aeronave quando os controles são liberados.
 
-## O que você vai encontrar
+---
 
-- Voo tridimensional e combate arcade em uma arena urbana neon.
-- Mira, travamento de alvo, projéteis com colisão contínua e escudo regenerativo.
-- Chefe com fases, ataques anunciados e períodos de vulnerabilidade.
-- HUD tático com radar, telemetria, objetivos e feedback de combate.
-- Efeitos e áudio procedural, sem arquivos de mídia remotos.
-- Campanha, medalhas, recordes e preferências salvos no navegador.
-- Versão de arquivo único para jogar offline, sem servidor e sem conexão.
+## 🗺️ Modos de Jogo
 
-## Jogar
+### 1. Hub de Comando Central
+O menu principal centraliza a experiência em três modos de navegação rápida:
+1. **Campanha**: Progressão linear com setores desbloqueáveis e sistema de medalhas (Bronze, Prata, Ouro).
+2. **Mundo Aberto**: Exploração livre em metrópoles com 8 tarefas dinâmicas por universo.
+3. **Vale da Cachoeira**: Expedição de alta velocidade pelo desfiladeiro fluvial e cânion hidrotermal.
 
-Baixe ou clone o projeto e abra **[`AETHER-X-offline.html`](AETHER-X-offline.html)** em um navegador desktop moderno. Esse arquivo já contém o jogo, os estilos e o Three.js. Não precisa instalar dependências para jogar.
+Ao selecionar qualquer modo, o jogador escolhe entre o **Modo Realista** e o **Modo Cyberpunk**.
 
-> `index.html` é a entrada usada durante o desenvolvimento com Vite. Se for aberto diretamente por caminho de arquivo, ele explica como abrir a versão offline.
+### 2. Campanhas
+- **Campanha Cyberpunk (8 Missões)**:
+  - 01 · Treinamento de Voo (Megacidade)
+  - 02 · Interceptação Rápida (Perímetro Urbano)
+  - 03 · Núcleo Sentinela (Chefe em 3 Fases)
+  - 04 · Porto Industrial (Docas sob Chuva)
+  - 05 · Corredor das Torres (Torres Solares em Altitude)
+  - 06 · Desfiladeiro das Cataratas (Cânion com Snipers)
+  - 07 · Zona de Sombra (Esquadrão Pesado Noturno)
+  - 08 · Represa Hidroelétrica (Chefe Supremo Leviatã)
+- **Campanha Realista (10 Operações)**:
+  - Operações táticas com 7 biomas exclusivos (Serra da Neblina, Incêndio Florestal, Cânion Árido, Falésias Costeiras, Base Ártica, Refinaria Noturna, Porto Mercantil, Vale da Cachoeira, Vale Atlântico e Megaconstrução da Represa).
+  - Objetivos avançados: resgate com hover de precisão, combate a incêndios florestais (`E`), transporte de carga e escolta de comboios.
 
-### Controles
+### 3. Mundos Abertos
+- **Neo-Aether (Cyberpunk)**: Megacidade com arranha-céus, anéis viários suspensos, helipontos e tráfego aéreo.
+- **Vale Atlântico (Realista)**: Relevo da Mata Atlântica com colinas de até 42m, Farol Costeiro do Cabo com feixe giratório e Porto Mercantil com quebra-mar de 240m, navio cargueiro de 130m, guindastes de pórtico e pátio de contêineres coloridos.
+- **HUD Retrátil**: Pressione `[TAB]` para compactar a lista de tarefas durante o voo e liberar a visibilidade.
 
-| Tecla | Ação |
+---
+
+## 🛸 Hangar, Upgrades & Economia
+
+- **Catálogo de 8 Drones em 4 Tiers**:
+  - *Realista*: DJI Mavic Tático (T1), Apex FPV Carbon 7" (T2), Goliath Hexacóptero Industrial (T3), Falcão VANT Militar (T4).
+  - *Cyberpunk*: AETHER-X Mk.I (T1), Specter V-Wing (T2), Valkyrie Gunship (T3), Omega Singularity (T4).
+- **Oficina Mecânica Exclusiva**:
+  - 5 categorias de melhorias × 5 níveis por drone (Propulsão, Blindagem, Armamento, Bateria/Turbo, Aviônica/Carregador).
+  - **Isolamento de Upgrades**: Peças compradas pertencem exclusivamente ao drone aprimorado.
+  - **Curva de Overlap**: Um drone de Tier inferior totalmente melhorado supera o drone de fábrica do Tier seguinte.
+- **Economia de Créditos (`CR$`)**:
+  - Saldo compartilhado ganho por conclusão de missões, medalhas, pontuação e tarefas de mundo aberto.
+
+---
+
+## 🎮 Controles
+
+| Tecla / Comando | Função |
 | --- | --- |
-| `W` / `S` | Acelerar / frear |
-| `A` / `D` | Guinar |
-| `Espaço` / `C` | Subir / descer |
-| `Shift` | Turbo |
-| Clique esquerdo / `F` | Disparar |
+| `W` / `S` | Acelerar à frente / Frear e recuar |
+| `A` / `D` | Guinar (Yaw esquerda / direita) |
+| `Espaço` / `C` | Subir / Descer (Empuxo vertical) |
+| `Shift` | Turbo pós-combustão |
+| `Clique esquerdo` / `F` | Disparar armamento frontal |
+| `R` | Recarregar metralhadora traçante (Modo Realista) |
+| `E` | Dispersão de água / Entrega de carga |
+| `V` | Alternar câmera (Perseguição / Próxima) |
+| `Tab` | Alternar lista de tarefas do Mundo Aberto (Expandida / Compacta) |
 | `Esc` / `P` | Pausar ou retomar |
 
-## Desenvolvimento
+---
 
-Requer **Node.js 20.19+** e **pnpm**.
+## 💻 Jogar Offline
+
+Abra o arquivo **[`AETHER-X-offline.html`](AETHER-X-offline.html)** em qualquer navegador desktop moderno (Chrome, Edge, Firefox, Brave, Safari).
+O pacote contém a engine Three.js, shaders procedurais, geometria 3D, áudio sintetizado e estilos unificados em apenas **792 KB**, sem necessitar de internet ou downloads externos.
+
+---
+
+## 🛠️ Desenvolvimento e Validação
+
+Requer **Node.js 20+** e **pnpm**.
 
 ```powershell
 pnpm install
-pnpm dev
+pnpm dev             # Servidor de desenvolvimento Vite
+pnpm typecheck       # Validação estática TypeScript (tsc --noEmit)
+pnpm test            # Bateria automatizada de testes de invariantes
+pnpm build           # Compilação e empacotamento offline
+pnpm verify:offline  # Validação de integridade 100% autônoma
 ```
-
-O Vite inicia a versão de desenvolvimento em `http://127.0.0.1:5173`.
-
-### Comandos
-
-```powershell
-pnpm typecheck       # verifica os tipos TypeScript
-pnpm test            # executa os testes de invariantes
-pnpm build           # compila o jogo e atualiza o HTML offline
-pnpm verify:offline  # confere o pacote sem dependências externas
-```
-
-O build de produção do Vite fica em `dist/`. O jogo autocontido é gerado em `AETHER-X-offline.html`, na raiz do projeto.
-
-## Como o projeto está organizado
-
-```text
-src/
-  audio.ts       áudio procedural
-  game.ts        mundo Three.js, voo, combate, radar e efeitos
-  main.ts        interface, estados, missão e progressão
-  missions.ts    objetivos, limites e critérios de medalha
-  physics.ts     amortecimento por tempo e colisão por segmento
-  state.ts       transições permitidas entre estados do jogo
-  storage.ts     progresso local versionado e validado
-tests/
-  invariants.test.mjs
-scripts/
-  create-offline.mjs
-  verify-offline.mjs
-assets/
-  aether-x-banner.svg
-```
-
-O jogo funciona sem backend. O progresso e as preferências ficam no armazenamento local do navegador. Para contribuir, abra uma issue descrevendo a mudança ou envie um pull request com o contexto e os passos para reproduzi-la.
-
----
-
-<div align="center">
-
-**AETHER-X // PROTOCOLO DE DEFESA · 2089**  
-Construído para voos curtos, combates intensos e mais uma tentativa.
-
-</div>
