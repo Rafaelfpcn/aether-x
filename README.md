@@ -2,115 +2,113 @@
 
 <img src="assets/aether-x-banner.svg" alt="AETHER-X — protocolo de defesa" width="100%">
 
-### Um jogo arcade de voo e combate em uma campanha de seis missões.
+### Jogo aeroespacial 3D em arquivo único HTML — 100% offline e sem dependências externas.
 
 [**JOGAR AGORA · HTML OFFLINE**](AETHER-X-offline.html)
 
-Voe pela megacidade. Cruze o cânion. Defenda as águas do vale.
+Campanha Cyberpunk · Operações Realistas · Mundos Abertos · Hangar & Upgrades · Vale da Cachoeira
 
 </div>
 
 ---
 
-## A campanha
+## 🚀 Visão Geral do Jogo
 
-Assuma o quadricóptero AETHER-X e recupere o espaço aéreo. A campanha combina treinamento, interceptação, combate contra chefes e desafios de navegação em cenários diferentes.
+O **AETHER-X** é um jogo completo de combate e simulação aeroespacial desenvolvido em Three.js e TypeScript, projetado para rodar diretamente do navegador sem necessidade de servidor ou conexão com a internet.
 
-| Missão | Cenário | Objetivo |
-| --- | --- | --- |
-| **01 · Treinamento de voo** | Megacidade neon | Atravesse seis portais e aprenda os controles |
-| **02 · Interceptação** | Perímetro urbano | Abata cinco drones antes do tempo acabar |
-| **03 · Sentinela Alfa** | Centro da cidade | Derrote o chefe em três fases |
-| **04 · Porto sob Chuva** | Porto industrial | Elimine sete drones entre guindastes e contêineres |
-| **05 · Corredor das Torres** | Cânion urbano | Atravesse seis balizas seguindo uma rota estreita |
-| **06 · Última Comporta** | Represa | Derrote o guardião e impeça a inundação do vale |
+### Destaques
+- **Dois Universos Visuais**:
+  - **Modo Realista**: Aerodinâmica com inércia, arrasto, rajadas de vento, efeito solo, recarga de munição balística traçante (`R`), OSD com horizonte artificial e telemetria GPS.
+  - **Modo Cyberpunk**: Ação arcade neon de alta velocidade, escudo defletor de plasma e canhões de pulso contínuo.
+- **Dois Modelos de Voo Independentes** (`FlightModel`):
+  - **Arcade**: Voo responsivo, agilidade instantânea e mira assistida.
+  - **Simulador**: Sustentação física, inércia de curva, ângulo de atitude e resposta a turbulência.
+  - *Alternável livremente no menu de Configurações, independente do estilo visual.*
+- **Câmera Dinâmica com Mira Desobstruída**:
+  - Enquadramento inteligente que compensa manobras de mergulho, garantindo que o drone nunca obstrua o retículo central contra alvos.
+- **Estabilização Ativa de Voo (GPS & Altitude Hold)**:
+  - Sistema de controle de voo que anula ventos de até 21 km/h e freia ativamente a aeronave quando os controles são liberados.
 
-As missões são liberadas em sequência. Medalhas, recordes e preferências ficam salvos no navegador.
+---
 
-## Modo Rio
+## 🗺️ Modos de Jogo
 
-Uma expedição separada da campanha leva a batalha para um vale fluvial naturalista. O cenário inclui água com textura animada, cachoeira, mata nas margens, a casa elevada de um pescador e uma canoa no cais. Defenda a comunidade abatendo oito drones.
+### 1. Hub de Comando Central
+O menu principal centraliza a experiência em três modos de navegação rápida:
+1. **Campanha**: Progressão linear com setores desbloqueáveis e sistema de medalhas (Bronze, Prata, Ouro).
+2. **Mundo Aberto**: Exploração livre em metrópoles com 8 tarefas dinâmicas por universo.
+3. **Vale da Cachoeira**: Expedição de alta velocidade pelo desfiladeiro fluvial e cânion hidrotermal.
 
-O vale é uma composição original inspirada em paisagens ribeirinhas brasileiras, sem representar um local específico.
+Ao selecionar qualquer modo, o jogador escolhe entre o **Modo Realista** e o **Modo Cyberpunk**.
 
-O modo mantém a física arcade, a pilotagem por teclado e o disparo com mouse. Os elementos do cenário são gerados localmente pelo jogo; não há downloads de modelos, texturas ou áudio durante a partida.
+### 2. Campanhas
+- **Campanha Cyberpunk (8 Missões)**:
+  - 01 · Treinamento de Voo (Megacidade)
+  - 02 · Interceptação Rápida (Perímetro Urbano)
+  - 03 · Núcleo Sentinela (Chefe em 3 Fases)
+  - 04 · Porto Industrial (Docas sob Chuva)
+  - 05 · Corredor das Torres (Torres Solares em Altitude)
+  - 06 · Desfiladeiro das Cataratas (Cânion com Snipers)
+  - 07 · Zona de Sombra (Esquadrão Pesado Noturno)
+  - 08 · Represa Hidroelétrica (Chefe Supremo Leviatã)
+- **Campanha Realista (10 Operações)**:
+  - Operações táticas com 7 biomas exclusivos (Serra da Neblina, Incêndio Florestal, Cânion Árido, Falésias Costeiras, Base Ártica, Refinaria Noturna, Porto Mercantil, Vale da Cachoeira, Vale Atlântico e Megaconstrução da Represa).
+  - Objetivos avançados: resgate com hover de precisão, combate a incêndios florestais (`E`), transporte de carga e escolta de comboios.
 
-## Voo e combate
+### 3. Mundos Abertos
+- **Neo-Aether (Cyberpunk)**: Megacidade com arranha-céus, anéis viários suspensos, helipontos e tráfego aéreo.
+- **Vale Atlântico (Realista)**: Relevo da Mata Atlântica com colinas de até 42m, Farol Costeiro do Cabo com feixe giratório e Porto Mercantil com quebra-mar de 240m, navio cargueiro de 130m, guindastes de pórtico e pátio de contêineres coloridos.
+- **HUD Retrátil**: Pressione `[TAB]` para compactar a lista de tarefas durante o voo e liberar a visibilidade.
 
-- Aceleração com inércia, altitude livre, turbo recarregável e limites de arena.
-- Câmera de perseguição suavizada, com enquadramento e campo de visão que reagem à velocidade.
-- Pressione `V` durante a missão para alternar para uma câmera próxima.
-- Mira assistida, travamento de alvo, canhões de plasma e acertos com colisão contínua.
-- Drones batedores, artilheiros e blindados; chefes com ataques anunciados, três padrões e janelas vulneráveis.
-- Reforços entram em grupos no Porto e no Modo Rio para manter o combate legível.
-- Radar, telemetria, escudo, objetivos, avisos de ataque e pontuação por esquivas próximas.
-- Áudio e música sintetizados no navegador.
+---
 
-### Controles
+## 🛸 Hangar, Upgrades & Economia
 
-| Tecla | Ação |
+- **Catálogo de 8 Drones em 4 Tiers**:
+  - *Realista*: DJI Mavic Tático (T1), Apex FPV Carbon 7" (T2), Goliath Hexacóptero Industrial (T3), Falcão VANT Militar (T4).
+  - *Cyberpunk*: AETHER-X Mk.I (T1), Specter V-Wing (T2), Valkyrie Gunship (T3), Omega Singularity (T4).
+- **Oficina Mecânica Exclusiva**:
+  - 5 categorias de melhorias × 5 níveis por drone (Propulsão, Blindagem, Armamento, Bateria/Turbo, Aviônica/Carregador).
+  - **Isolamento de Upgrades**: Peças compradas pertencem exclusivamente ao drone aprimorado.
+  - **Curva de Overlap**: Um drone de Tier inferior totalmente melhorado supera o drone de fábrica do Tier seguinte.
+- **Economia de Créditos (`CR$`)**:
+  - Saldo compartilhado ganho por conclusão de missões, medalhas, pontuação e tarefas de mundo aberto.
+
+---
+
+## 🎮 Controles
+
+| Tecla / Comando | Função |
 | --- | --- |
-| `W` / `S` | Acelerar / frear |
-| `A` / `D` | Guinar |
-| `Espaço` / `C` | Subir / descer |
-| `Shift` | Turbo |
-| Clique esquerdo / `F` | Disparar |
-| `V` | Alternar câmera de perseguição / próxima |
+| `W` / `S` | Acelerar à frente / Frear e recuar |
+| `A` / `D` | Guinar (Yaw esquerda / direita) |
+| `Espaço` / `C` | Subir / Descer (Empuxo vertical) |
+| `Shift` | Turbo pós-combustão |
+| `Clique esquerdo` / `F` | Disparar armamento frontal |
+| `R` | Recarregar metralhadora traçante (Modo Realista) |
+| `E` | Dispersão de água / Entrega de carga |
+| `V` | Alternar câmera (Perseguição / Próxima) |
+| `Tab` | Alternar lista de tarefas do Mundo Aberto (Expandida / Compacta) |
 | `Esc` / `P` | Pausar ou retomar |
 
-## Jogar offline
+---
 
-Baixe ou clone o projeto e abra **[`AETHER-X-offline.html`](AETHER-X-offline.html)** em um navegador desktop moderno com aceleração gráfica. Esse arquivo contém o jogo, o Three.js e os estilos; não precisa de servidor, instalação ou internet para jogar.
+## 💻 Jogar Offline
 
-## Desenvolvimento
+Abra o arquivo **[`AETHER-X-offline.html`](AETHER-X-offline.html)** em qualquer navegador desktop moderno (Chrome, Edge, Firefox, Brave, Safari).
+O pacote contém a engine Three.js, shaders procedurais, geometria 3D, áudio sintetizado e estilos unificados em apenas **792 KB**, sem necessitar de internet ou downloads externos.
 
-Requer **Node.js 20.19+** e **pnpm**.
+---
+
+## 🛠️ Desenvolvimento e Validação
+
+Requer **Node.js 20+** e **pnpm**.
 
 ```powershell
 pnpm install
-pnpm dev
+pnpm dev             # Servidor de desenvolvimento Vite
+pnpm typecheck       # Validação estática TypeScript (tsc --noEmit)
+pnpm test            # Bateria automatizada de testes de invariantes
+pnpm build           # Compilação e empacotamento offline
+pnpm verify:offline  # Validação de integridade 100% autônoma
 ```
-
-O Vite inicia a versão de desenvolvimento em `http://127.0.0.1:5173`.
-
-### Comandos de validação
-
-```powershell
-pnpm typecheck       # verifica os tipos TypeScript
-pnpm test            # executa os testes de invariantes
-pnpm build           # compila o jogo e atualiza o HTML offline
-pnpm verify:offline  # confere o pacote sem dependências externas
-```
-
-## Estrutura
-
-```text
-src/
-  audio.ts       áudio procedural
-  drone-model.ts geometria do AETHER-X
-  game.ts        mundo Three.js, voo, combate, radar e efeitos
-  main.ts        interface, estados, missões e progressão
-  missions.ts   campanha, encontros, paletas e modo Rio
-  physics.ts    amortecimento, turbo, colisões e câmera
-  scenery.ts    cenários locais da cidade, porto, torres, represa e rio
-  state.ts      transições permitidas entre estados
-  storage.ts    progresso local versionado e validado
-tests/
-  invariants.test.mjs
-scripts/
-  create-offline.mjs
-  verify-offline.mjs
-assets/
-  aether-x-banner.svg
-```
-
-O projeto funciona sem backend. A versão atual migra o progresso salvo pela edição anterior de três missões sem descartar recordes, volume, tema ou áudio.
-
----
-
-<div align="center">
-
-**AETHER-X // PROTOCOLO DE DEFESA · 2089**  
-Seis missões. Um modo especial. Voo arcade sem conexão.
-
-</div>

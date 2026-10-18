@@ -30,7 +30,7 @@ export class AudioEngine {
       filter.frequency.value = 220;
       filter.Q.value = 2.4;
       this.engineGain = this.context.createGain();
-      this.engineGain.gain.value = 0.035;
+      this.engineGain.gain.value = 0;
       this.engineOsc.connect(filter).connect(this.engineGain).connect(this.master);
       this.engineOsc.start();
       this.onReady();
@@ -57,6 +57,10 @@ export class AudioEngine {
     if (this.scene === scene) return;
     this.scene = scene;
     this.musicStep = 0;
+    if (this.engineGain && this.context) {
+      const targetGain = scene === 'combat' || scene === 'boss' ? 0.035 : 0;
+      this.engineGain.gain.setTargetAtTime(targetGain, this.context.currentTime, 0.05);
+    }
     if (scene === 'paused') {
       window.clearInterval(this.musicTimer);
       this.musicTimer = 0;
@@ -72,12 +76,32 @@ export class AudioEngine {
     this.engineOsc.frequency.setTargetAtTime(target, now, 0.08);
   }
 
-  play(kind: 'shot' | 'hit' | 'damage' | 'warning' | 'gate' | 'nearMiss' | 'explosion' | 'win' | 'fail'): void {
+  play(
+    kind:
+      | 'shot'
+      | 'tracer'
+      | 'reload'
+      | 'crash'
+      | 'shutter'
+      | 'hit'
+      | 'damage'
+      | 'warning'
+      | 'gate'
+      | 'nearMiss'
+      | 'explosion'
+      | 'win'
+      | 'fail'
+      | 'purchase',
+  ): void {
     this.unlock();
     if (!this.context || !this.master) return;
     const now = this.context.currentTime;
     const sequence: Record<typeof kind, { from: number; to: number; duration: number; wave: OscillatorType; gain: number }> = {
       shot: { from: 930, to: 170, duration: 0.12, wave: 'sawtooth', gain: 0.14 },
+      tracer: { from: 420, to: 85, duration: 0.065, wave: 'square', gain: 0.13 },
+      reload: { from: 310, to: 680, duration: 0.16, wave: 'triangle', gain: 0.12 },
+      crash: { from: 140, to: 36, duration: 0.28, wave: 'sawtooth', gain: 0.25 },
+      shutter: { from: 1400, to: 880, duration: 0.07, wave: 'sine', gain: 0.14 },
       hit: { from: 520, to: 100, duration: 0.09, wave: 'triangle', gain: 0.18 },
       damage: { from: 180, to: 52, duration: 0.26, wave: 'sawtooth', gain: 0.24 },
       warning: { from: 280, to: 460, duration: 0.22, wave: 'square', gain: 0.08 },
@@ -86,6 +110,7 @@ export class AudioEngine {
       explosion: { from: 160, to: 38, duration: 0.38, wave: 'triangle', gain: 0.22 },
       win: { from: 520, to: 1040, duration: 0.48, wave: 'triangle', gain: 0.16 },
       fail: { from: 240, to: 70, duration: 0.45, wave: 'sawtooth', gain: 0.16 },
+      purchase: { from: 560, to: 1220, duration: 0.24, wave: 'sine', gain: 0.15 },
     };
     const note = sequence[kind];
     const oscillator = this.context.createOscillator();

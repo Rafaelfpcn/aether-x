@@ -3,160 +3,491 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#070b12" />
-    <meta name="description" content="AETHER-X: campanha arcade de voo, combate e um modo naturalista sobre um rio brasileiro." />
-    <title>AETHER-X // Protocolo de Defesa</title>
+    <title>AETHER-X // Comando de Voo</title>
   </head>
   <body>
-    <main id="app" aria-label="AETHER-X">
-      <div id="world" aria-hidden="true"></div>
-      <div class="vignette" aria-hidden="true"></div>
+    <!-- SOURCE FILE GUIDANCE START -->
+    <noscript>Ative o JavaScript ou abra AETHER-X-offline.html para jogar offline.</noscript>
+    <!-- SOURCE FILE GUIDANCE END -->
+    <div id="app">
+      <div id="scene-container" aria-label="Espaço aéreo tridimensional AETHER-X"></div>
+      <div class="scanlines" aria-hidden="true"></div>
       <div id="damage-flash" aria-hidden="true"></div>
 
-      <section id="hud" class="hud is-hidden" aria-live="polite">
-        <header class="hud-top">
-          <div class="identity plate">
-            <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
-            <div><p class="eyebrow">AETHER DEFENSE NETWORK</p><h1>AETHER<span>-X</span></h1><p class="brand-sub">PROTOCOLO DE DEFESA // 2089</p></div>
+      <section id="menu-screen" class="screen active" aria-labelledby="game-title">
+        <header class="top-strip">
+          <div class="brand-mark">
+            <span class="status-dot"></span>
+            <span>UNIDADE AÉREA TÁTICA // HANGAR ORBITAL v4.0</span>
           </div>
-          <div class="mission-readout plate">
-            <p class="eyebrow">MISSÃO ATIVA <span id="mission-index">01 / 06</span></p>
-            <h2 id="mission-name">Treinamento de voo</h2>
-            <div class="objective-line"><span class="status-dot"></span><span id="objective-text">Atravesse os portais</span></div>
-            <div class="objective-track"><span id="objective-fill"></span></div>
-          </div>
-          <div class="telemetry plate">
-            <div><p class="eyebrow">VELOCIDADE</p><strong><span id="speed">000</span><small> KM/H</small></strong></div>
-            <div><p class="eyebrow">ALTITUDE</p><strong><span id="altitude">016</span><small> M</small></strong></div>
-            <div><p class="eyebrow">CRONÔMETRO</p><strong id="timer">03:00</strong></div>
-            <div><p class="eyebrow">PONTUAÇÃO</p><strong id="score">000000</strong></div>
-            <div class="boost-stat"><p class="eyebrow">TURBO</p><strong id="boost-value">100%</strong><div class="boost-track"><span id="boost-fill"></span></div></div>
-            <button id="pause-button" class="icon-button" aria-label="Pausar jogo" title="Pausar (Esc)"><span>Ⅱ</span></button>
+          <div class="top-actions">
+            <span id="credits-pill" class="pill credits-pill">CR$ 800</span>
+            <span id="audio-pill" class="pill">ÁUDIO PRONTO AO INTERAGIR</span>
+            <button id="hangar-top-button" class="secondary-button top-nav-btn" type="button">DRONES</button>
+            <button id="upgrades-top-button" class="secondary-button top-nav-btn" type="button">UPGRADES</button>
+            <button id="settings-button" class="ghost-button top-nav-btn" type="button">CONFIGURAÇÕES</button>
           </div>
         </header>
 
-        <div class="hud-center" aria-hidden="true">
-          <div id="reticle" class="reticle"><i></i><b></b></div>
-          <div id="lock-label" class="lock-label">ALVO TRAVADO</div>
-          <div id="toast" class="toast"></div>
-          <div id="warning" class="warning"></div>
+        <div class="menu-grid">
+          <div class="hero-card plate">
+            <!-- VISÃO 1: MENU PRINCIPAL HUB (3 Modos + Loja de Drones + Upgrades + Configurações) -->
+            <div id="menu-hub-view" class="menu-subview">
+              <div class="hero-top-row">
+                <p class="eyebrow">CENTRAL DE OPERAÇÕES · ESCOLHA O MODO DE VOO E O UNIVERSO</p>
+                <span id="hub-active-universe-badge" class="mode-badge">UNIVERSO ATIVO: REALISTA</span>
+              </div>
+              <h1 id="game-title">AETHER<span>-X</span></h1>
+              <p id="hero-lead" class="lead">
+                Selecione um modo abaixo para escolher entre <strong>Modo Realista</strong> ou <strong>Modo Cyberpunk</strong>. Ganhe créditos (CR$) em cada fase para comprar novos drones e melhorar exclusivamente o seu drone atual!
+              </p>
+
+              <div class="hub-modes-grid" role="list" aria-label="Modos principais de jogo">
+                <div class="hub-mode-card campaign-card" role="listitem">
+                  <div>
+                    <div class="special-header">
+                      <p class="eyebrow">OPERAÇÕES ESTRUTURADAS</p>
+                      <span id="hub-campaign-progress" class="mode-badge">1 / 10 FASES</span>
+                    </div>
+                    <strong>Campanha Tática</strong>
+                    <span>Escolha jogar a Campanha Realista (10 fases com física simulador) ou a Campanha Cyberpunk (8 fases neon).</span>
+                  </div>
+                  <button id="hub-campaign-button" class="primary-button compact-button" type="button">
+                    ESCOLHER CAMPANHA (REALISTA / CYBERPUNK)
+                  </button>
+                </div>
+
+                <div class="hub-mode-card openworld-box" role="listitem">
+                  <div>
+                    <div class="special-header">
+                      <p class="eyebrow" id="openworld-eyebrow">EXPLORAÇÃO &amp; TASKS URBANAS</p>
+                      <span id="openworld-progress-pill" class="mode-badge">0 / 8 TASKS</span>
+                    </div>
+                    <strong id="openworld-title">Mundo Aberto</strong>
+                    <span id="openworld-desc">Voe livremente pela Metrópole Vale Atlântico (Realista) ou pela Megacidade Neo-Aether (Cyberpunk) e inicie Tasks dinâmicas.</span>
+                  </div>
+                  <div class="special-actions-row">
+                    <button id="openworld-mode-button" class="primary-button compact-button" type="button">
+                      ESCOLHER MUNDO ABERTO (REALISTA / CYBERPUNK)
+                    </button>
+                    <button id="openworld-style-button" class="secondary-button compact-button" type="button">UNIVERSO</button>
+                  </div>
+                </div>
+
+                <div class="hub-mode-card river-box" role="listitem">
+                  <div>
+                    <div class="special-header">
+                      <p class="eyebrow">EXPEDIÇÃO NO DESFILADEIRO</p>
+                      <span id="river-style-pill" class="mode-badge">REALISTA / CYBERPUNK</span>
+                    </div>
+                    <strong>Vale da Cachoeira</strong>
+                    <span>Atravesse o cânion fluvial e a grande queda d'água escolhendo entre expedição naturalista DJI ou incursão Cyberpunk Neon.</span>
+                  </div>
+                  <button id="river-mode-button" class="primary-button compact-button" type="button">
+                    ESCOLHER VALE DA CACHOEIRA (REALISTA / CYBERPUNK)
+                  </button>
+                </div>
+              </div>
+
+              <div class="hub-utility-grid" aria-label="Hangar, Oficina de Upgrades e Configurações">
+                <button id="hub-hangar-button" class="utility-card-btn" type="button">
+                  <span class="eyebrow">HANGAR &amp; LOJA</span>
+                  <strong>Seleção de Drones</strong>
+                  <small id="hub-hangar-summary">2 / 8 Drones adquiridos · Comprar com CR$</small>
+                </button>
+                <button id="hub-upgrades-button" class="utility-card-btn" type="button">
+                  <span class="eyebrow">OFICINA EXCLUSIVA</span>
+                  <strong>Upgrades do Drone Atual</strong>
+                  <small id="hub-upgrades-summary">DJI Mavic · Nível 0/25 · Rating 100</small>
+                </button>
+                <button id="hub-settings-button" class="utility-card-btn" type="button">
+                  <span class="eyebrow">SISTEMA &amp; GRÁFICOS</span>
+                  <strong>Configurações</strong>
+                  <small>Áudio, Tema do HUD, Qualidade 3D e Progresso</small>
+                </button>
+              </div>
+            </div>
+
+            <!-- VISÃO 2: SELEÇÃO DE FASES DA CAMPANHA (aberta após escolher Realista ou Cyberpunk na Campanha) -->
+            <div id="menu-campaign-view" class="menu-subview hidden">
+              <div class="hero-top-row">
+                <button id="campaign-back-hub" class="ghost-button tiny-button" type="button">← VOLTAR AO MENU PRINCIPAL</button>
+                <div class="style-toggle-group" role="tablist" aria-label="Universo da Campanha">
+                  <button id="global-style-realistic" class="style-tab selected" type="button" role="tab" aria-selected="true">
+                    CAMPANHA REALISTA (10 FASES)
+                  </button>
+                  <button id="global-style-futuristic" class="style-tab" type="button" role="tab" aria-selected="false">
+                    CAMPANHA CYBERPUNK (8 FASES)
+                  </button>
+                </div>
+              </div>
+              <h2 id="campaign-view-title" class="campaign-view-heading">Operações de Campanha · Modo Realista</h2>
+              <p id="campaign-view-copy" class="lead compact-lead">
+                Cada fase concluída recompensa você com créditos (CR$) para comprar novos drones ou aprimorar o seu drone atual.
+              </p>
+              <div class="mission-list" id="mission-list" role="list" aria-label="Missões disponíveis"></div>
+              <div class="campaign-bottom-bar">
+                <button id="campaign-hangar-button" class="secondary-button compact-button" type="button">
+                  PAINEL DE SELEÇÃO DE DRONES (LOJA)
+                </button>
+                <button id="campaign-upgrades-button" class="secondary-button compact-button" type="button">
+                  PAINEL DE UPGRADES DO DRONE ATUAL
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <aside class="flight-card plate" aria-label="Resumo do drone e missão">
+            <div class="card-header">
+              <span id="equipped-drone-header">DRONE EQUIPADO</span>
+              <strong id="selected-mission-code">REALISTA 01</strong>
+            </div>
+            <div class="drone-preview" aria-hidden="true">
+              <div class="preview-ring"></div>
+              <div class="preview-ring inner"></div>
+              <svg class="drone-schematic-svg" viewBox="0 0 240 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="120" cy="120" r="96" stroke="currentColor" stroke-opacity="0.16" stroke-dasharray="4 6" />
+                <line x1="120" y1="14" x2="120" y2="226" stroke="currentColor" stroke-opacity="0.14" />
+                <line x1="14" y1="120" x2="226" y2="120" stroke="currentColor" stroke-opacity="0.14" />
+                <!-- Braços diagonais -->
+                <path d="M120 120 L58 66 M120 120 L182 66 M120 120 L58 174 M120 120 L182 174" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-opacity="0.75" />
+                <!-- Canhões frontais -->
+                <path d="M98 88 L98 44 M142 88 L142 44" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
+                <!-- Rotores animados -->
+                <g class="svg-rotor" style="transform-origin: 58px 66px">
+                  <circle cx="58" cy="66" r="24" stroke="currentColor" stroke-width="2" stroke-opacity="0.85" />
+                  <line x1="36" y1="66" x2="80" y2="66" stroke="currentColor" stroke-width="2.5" />
+                  <line x1="58" y1="44" x2="58" y2="88" stroke="currentColor" stroke-width="2.5" />
+                </g>
+                <g class="svg-rotor reverse" style="transform-origin: 182px 66px">
+                  <circle cx="182" cy="66" r="24" stroke="currentColor" stroke-width="2" stroke-opacity="0.85" />
+                  <line x1="160" y1="66" x2="204" y2="66" stroke="currentColor" stroke-width="2.5" />
+                  <line x1="182" y1="44" x2="182" y2="88" stroke="currentColor" stroke-width="2.5" />
+                </g>
+                <g class="svg-rotor reverse" style="transform-origin: 58px 174px">
+                  <circle cx="58" cy="174" r="24" stroke="currentColor" stroke-width="2" stroke-opacity="0.85" />
+                  <line x1="36" y1="174" x2="80" y2="174" stroke="currentColor" stroke-width="2.5" />
+                  <line x1="58" y1="152" x2="58" y2="196" stroke="currentColor" stroke-width="2.5" />
+                </g>
+                <g class="svg-rotor" style="transform-origin: 182px 174px">
+                  <circle cx="182" cy="174" r="24" stroke="currentColor" stroke-width="2" stroke-opacity="0.85" />
+                  <line x1="160" y1="174" x2="204" y2="174" stroke="currentColor" stroke-width="2.5" />
+                  <line x1="182" y1="152" x2="182" y2="196" stroke="currentColor" stroke-width="2.5" />
+                </g>
+                <!-- Fuselagem central esculpida -->
+                <polygon points="120,52 144,96 138,158 120,182 102,158 96,96" fill="rgba(57,229,239,0.18)" stroke="currentColor" stroke-width="2.5" />
+                <circle cx="120" cy="116" r="12" fill="currentColor" fill-opacity="0.35" stroke="currentColor" stroke-width="2" />
+              </svg>
+              <div class="preview-telemetry-overlay">
+                <span id="preview-style-tag">CONFIG // DJI MAVIC TACTICAL</span>
+                <span id="preview-drone-rating">RATING 100 · NV 0/25</span>
+              </div>
+            </div>
+            <div class="equipped-drone-strip">
+              <div>
+                <small id="equipped-drone-tier">TIER 1 · DRONE ATUAL</small>
+                <strong id="equipped-drone-name">DJI Mavic 3 Tactical</strong>
+                <span id="equipped-drone-weapon">Metralhadora Traçante 5.56mm</span>
+              </div>
+              <div class="equipped-drone-actions">
+                <button id="aside-hangar-button" class="secondary-button tiny-button" type="button">DRONES</button>
+                <button id="aside-upgrades-button" class="primary-button tiny-button" type="button">UPGRADES</button>
+              </div>
+            </div>
+            <div class="spec-grid">
+              <div><span>MISSÃO</span><strong id="selected-mission-name">Circuito de Calibração</strong></div>
+              <div><span>SETOR</span><strong id="selected-mission-sector">Anel de Treinamento</strong></div>
+              <div><span>OBJETIVO</span><strong id="selected-mission-target">6 Balizas</strong></div>
+              <div><span>RECORDE</span><strong id="selected-mission-record">Sem registro</strong></div>
+            </div>
+            <div class="action-row">
+              <button id="continue-button" class="ghost-button" type="button">CONTINUAR CAMPANHA</button>
+              <button id="launch-button" class="primary-button" type="button">PREPARAR MISSÃO</button>
+            </div>
+          </aside>
         </div>
-        <div id="tutorial-tip" class="tutorial-tip is-hidden">W / S VELOCIDADE <i>·</i> A / D GUIAR <i>·</i> ESPAÇO / C ALTITUDE <i>·</i> SHIFT TURBO <i>·</i> CLIQUE / F DISPARAR <i>·</i> V CÂMERA</div>
+      </section>
+
+      <section id="river-style-modal" class="screen modal" aria-labelledby="river-style-title">
+        <div class="modal-card plate wide-modal">
+          <p class="eyebrow" id="modal-mode-eyebrow">SELEÇÃO DE UNIVERSO · CAMPANHA / MUNDO ABERTO / CACHOEIRA</p>
+          <h2 id="river-style-title">Escolha o Modo: Realista ou Cyberpunk</h2>
+          <p id="river-style-copy" class="modal-copy">
+            Escolha se deseja operar no Modo Realista (simulação aerodinâmica, vento, munição balística e cenários naturais/urbanos) ou no Modo Cyberpunk (voo arcade neon de alta velocidade e canhões de plasma).
+          </p>
+          <div class="style-choice-grid">
+            <button id="river-select-realistic" class="style-choice-card selected" type="button">
+              <span class="choice-badge">MODO REALISTA · DJI / TÁTICO</span>
+              <h3>Modo Realista</h3>
+              <p id="modal-realistic-desc">Física com inércia angular, vento cruzado, efeito solo, munição balística com recarga e colisão 3D real.</p>
+              <ul class="choice-specs">
+                <li><strong>Frota Realista:</strong> DJI Mavic 3, Apex FPV Racer, Matrice 600 Hex e VANT Predator.</li>
+                <li><strong>Cenários &amp; Alvos:</strong> Luz solar naturalista, VANTs, lanchas, antiaéreas e helicóptero de ataque.</li>
+              </ul>
+            </button>
+            <button id="river-select-futuristic" class="style-choice-card" type="button">
+              <span class="choice-badge cyber">MODO CYBERPUNK · NEON ARCADE</span>
+              <h3>Modo Cyberpunk</h3>
+              <p id="modal-futuristic-desc">Resposta imediata de voo arcade, atmosfera synthwave bioluminescente, bloom intenso e canhões de plasma.</p>
+              <ul class="choice-specs">
+                <li><strong>Frota Cyberpunk:</strong> AETHER-X Mk.I, Specter-V, Valkyrie Hex-Gunship e Omega-Core.</li>
+                <li><strong>Cenários &amp; Alvos:</strong> Megacidade Neo-Aether, cânion bioluminescente e esquadrões biomecânicos.</li>
+              </ul>
+            </button>
+          </div>
+          <div class="action-row">
+            <button id="river-cancel-button" class="ghost-button" type="button">VOLTAR AO MENU</button>
+            <button id="river-confirm-button" class="primary-button" type="button">CONFIRMAR E AVANÇAR</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="briefing-screen" class="screen modal" aria-labelledby="briefing-title">
+        <div class="modal-card plate">
+          <p class="eyebrow" id="briefing-code">MISSÃO 01</p>
+          <h2 id="briefing-title">Circuito de Calibração</h2>
+          <p id="briefing-summary" class="modal-copy"></p>
+          <div class="briefing-details">
+            <div><span>OBJETIVO TÁTICO</span><strong id="briefing-objective"></strong></div>
+            <div><span>AMEAÇA</span><strong id="briefing-threat"></strong></div>
+            <div><span>META DE OURO</span><strong id="briefing-gold"></strong></div>
+          </div>
+          <div class="action-row">
+            <button id="briefing-back" class="ghost-button" type="button">VOLTAR</button>
+            <button id="briefing-start" class="primary-button" type="button">INICIAR VOO</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="hud" class="hud" aria-label="Instrumentos de voo">
+        <header class="hud-top">
+          <div class="telemetry-bar plate">
+            <div><span>VEL</span><strong id="hud-speed">000</strong><small>KM/H</small></div>
+            <div><span>ALT</span><strong id="hud-altitude">000</strong><small>M</small></div>
+            <div><span>ESCUDO</span><strong id="hud-shield">100%</strong></div>
+            <div><span>PONTOS</span><strong id="hud-score">0000</strong></div>
+            <div><span>TEMPO</span><strong id="hud-time">00:00</strong></div>
+          </div>
+
+          <div class="mission-box plate">
+            <span id="hud-mission-code">MISSÃO 01</span>
+            <strong id="hud-objective">ATRAVESSAR BALIZAS</strong>
+            <div class="progress-track" aria-hidden="true"><div id="hud-progress" class="progress-fill"></div></div>
+          </div>
+
+          <div class="hud-buttons">
+            <button id="hud-mute" class="icon-button plate" type="button" aria-label="Alternar som">SOM</button>
+            <button id="hud-pause" class="icon-button plate" type="button" aria-label="Pausar jogo">PAUSA</button>
+          </div>
+        </header>
+
+        <div id="osd-overlay" class="osd-overlay" aria-hidden="true">
+          <div class="osd-chip osd-rec"><span class="rec-dot"></span>REC · 4K60 · ISO 100</div>
+          <div id="osd-gps" class="osd-chip">GPS -23.5489, -46.6388</div>
+          <div id="osd-wind" class="osd-chip">VENTO 00 KM/H</div>
+          <div id="osd-attitude" class="osd-chip">PITCH +00° · ROLL +00°</div>
+          <div id="osd-ammo" class="osd-chip osd-ammo">MUN 90/90 [R]</div>
+        </div>
+
+        <aside id="openworld-hud" class="openworld-hud plate compact" aria-label="Painel de Tasks do Mundo Aberto">
+          <div class="ow-header">
+            <div>
+              <span class="eyebrow" id="ow-hud-eyebrow">MUNDO ABERTO · TASKS DINÂMICAS</span>
+              <strong id="ow-status-label">VOO LIVRE — Pressione [TAB] para escolher tarefa</strong>
+            </div>
+            <div class="ow-header-actions">
+              <button id="ow-toggle-list" class="secondary-button tiny-button" type="button" title="Alternar visualização da lista (Tecla TAB)">TASKS [TAB]</button>
+              <button id="ow-abort-task" class="ghost-button tiny-button hidden" type="button">ABORTAR</button>
+              <button id="ow-finish-session" class="secondary-button tiny-button" type="button">CONCLUIR</button>
+            </div>
+          </div>
+          <div id="ow-task-list" class="ow-task-list"></div>
+        </aside>
+
+        <div id="boss-bar" class="boss-bar plate" aria-live="polite">
+          <div>
+            <span id="boss-phase">NÚCLEO SENTINELA // FASE 01</span>
+            <strong id="boss-state">JANELA DE ATAQUE ABERTA</strong>
+          </div>
+          <div class="boss-track"><div id="boss-fill" class="boss-fill"></div></div>
+        </div>
+
+        <div class="reticle-wrap" aria-hidden="true">
+          <div id="osd-horizon-line" class="osd-horizon-line"></div>
+          <div id="reticle" class="reticle">
+            <span></span><span></span><span></span><span></span>
+          </div>
+          <div id="hit-marker" class="hit-marker"></div>
+          <p id="lock-label" class="lock-label">SISTEMA DE MIRA ATIVO</p>
+        </div>
+
+        <div id="warning-banner" class="warning-banner" role="status" aria-live="assertive">ALERTA DE DISPARO</div>
+        <div id="event-toast" class="event-toast" role="status" aria-live="polite"></div>
 
         <footer class="hud-bottom">
-          <div class="shield-panel plate">
-            <div class="shield-icon">◇</div>
-            <div class="shield-copy"><p class="eyebrow">ESCUDO DO AETHER</p><div class="shield-track"><span id="shield-fill"></span></div><strong id="shield-value">100%</strong></div>
+          <div class="bars-card plate">
+            <div class="meter-row">
+              <span>INTEGRIDADE</span>
+              <div class="meter-track"><div id="shield-bar" class="meter-fill shield"></div></div>
+            </div>
+            <div class="meter-row">
+              <span>PROPULSÃO TURBO</span>
+              <div class="meter-track"><div id="boost-bar" class="meter-fill boost"></div></div>
+            </div>
           </div>
-          <div id="boss-panel" class="boss-panel plate is-hidden">
-            <div class="boss-head"><span>SENTINELA ALFA</span><span id="boss-phase">FASE 01</span></div>
-            <div class="boss-track"><span id="boss-fill"></span></div>
-            <p id="boss-state">ESCUDO ATIVO · AGUARDE A ABERTURA</p>
+
+          <div class="radar-card plate">
+            <canvas id="radar" width="148" height="148" aria-label="Radar tático"></canvas>
+            <span>RADAR 360°</span>
           </div>
-          <div class="radar-wrap plate">
-            <div class="radar-label"><span>RADAR TÁTICO</span><span>RNG 090</span></div>
-            <canvas id="radar" width="180" height="180" aria-label="Radar tático"></canvas>
-          </div>
-          <div class="controls-hint plate" aria-label="Controles de voo">
+
+          <div class="controls-hint plate" aria-label="Atalhos de controle">
             <div><span class="control-label">VOO</span><span class="control-keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span></div>
             <div><span class="control-label">ALTITUDE</span><span class="control-keys"><kbd>ESPAÇO</kbd><kbd>C</kbd></span></div>
             <div><span class="control-label">TURBO</span><span class="control-keys"><kbd>SHIFT</kbd></span></div>
-            <div><span class="control-label">DISPARO</span><span class="control-keys"><kbd>CLIQUE</kbd><kbd>F</kbd></span></div>
-            <div><span class="control-label">CÂMERA</span><span class="control-keys"><kbd>V</kbd></span></div>
+            <div><span class="control-label">DISPARO</span><span class="control-keys"><kbd>F</kbd><kbd>CLIQUE</kbd><kbd>R</kbd><kbd>E</kbd></span></div>
+            <div><span class="control-label">CÂMERA</span><span class="control-keys"><kbd>V</kbd><kbd>TAB</kbd></span></div>
           </div>
         </footer>
       </section>
 
-      <section id="menu-screen" class="screen screen-menu">
-        <div class="menu-layout">
-          <div class="menu-copy">
-            <p class="eyebrow bright">AETHER DEFENSE NETWORK <span class="live-dot"></span> SISTEMA ONLINE</p>
-            <h2>O céu é<br /><em>seu território.</em></h2>
-            <p class="lead">A megacidade caiu na mira dos Sentinelas. Domine o AETHER-X, abra caminho pelas torres e leve o combate até as águas do vale.</p>
-            <div class="campaign-progress"><div><span class="eyebrow">CAMPANHA</span><strong id="campaign-status">01 / 06 MISSÕES LIBERADAS</strong></div><div class="campaign-bar"><span id="campaign-fill"></span></div></div>
-            <div id="mission-list" class="mission-list"></div>
-            <div class="menu-actions"><button id="continue-button" class="button button-primary"><span>INICIAR CAMPANHA</span><b>↗</b></button><button id="settings-button" class="button button-quiet">CONFIGURAÇÕES</button></div>
-            <button id="river-mode-button" class="river-mode-button"><span class="river-glyph" aria-hidden="true">≈</span><span><strong>MODO RIO · RESGATE RIBEIRINHO</strong><small>CENÁRIO NATURALISTA · VOO ARCADE</small></span><b aria-hidden="true">↗</b></button>
-            <p class="save-note">PROGRESSO SALVO NESTE NAVEGADOR <span>·</span> SEM CONEXÃO NECESSÁRIA</p>
-          </div>
-          <aside class="menu-side">
-          <div class="flight-card plate"><div class="card-top"><span class="eyebrow">UNIDADE DE RESPOSTA</span><span class="class-chip">CLASSE X</span></div><div class="drone-silhouette">✳</div><div class="flight-stats"><div><span>VELOCIDADE MÁX.</span><b>420 <small>KM/H</small></b></div><div><span>ARMAMENTO</span><b>PLASMA <small>DUAL</small></b></div><div><span>ASSISTÊNCIA</span><b>MIRA <small>ATIVA</small></b></div></div><div class="card-footer"><span>AE-X / 09</span><span>PRONTO PARA DECOLAR <i></i></span></div></div>
-            <div class="best-run plate"><div><span class="eyebrow">MELHOR RESULTADO</span><strong id="best-result">—</strong></div><div class="medal med-none" id="campaign-medal">✦</div></div>
-          </aside>
-        </div>
-        <div class="menu-footer"><span>PROJECT AETHER-X <b>6.0</b></span><span>TECLADO + MOUSE <i>◆</i> PILOTAGEM ASSISTIDA</span></div>
-      </section>
-
-      <section id="briefing-screen" class="screen modal-screen is-hidden">
+      <section id="pause-screen" class="screen modal" aria-labelledby="pause-title">
         <div class="modal-card plate">
-          <button class="close-button" data-action="menu" aria-label="Voltar ao menu">×</button>
-          <p class="eyebrow bright" id="briefing-kicker">MISSÃO 01 // TREINAMENTO</p>
-          <h2 id="briefing-title">Treinamento de voo</h2>
-          <p id="briefing-copy" class="modal-copy"></p>
-          <div class="briefing-objective"><span class="objective-icon">◎</span><div><span class="eyebrow">OBJETIVO</span><strong id="briefing-objective"></strong></div></div>
-          <div id="briefing-controls" class="briefing-controls"></div>
-          <div class="modal-actions"><button id="launch-button" class="button button-primary"><span>INICIAR MISSÃO</span><b>↗</b></button><button class="button button-quiet" data-action="menu">VOLTAR</button></div>
+          <p class="eyebrow">SISTEMA EM ESPERA</p>
+          <h2 id="pause-title">Voo Pausado</h2>
+          <p class="modal-copy">Revise a telemetria, ajuste o áudio ou retome a operação quando estiver pronto.</p>
+          <div class="action-row">
+            <button id="pause-resume" class="primary-button" type="button">RETOMAR</button>
+            <button id="pause-restart" class="secondary-button" type="button">REINICIAR</button>
+            <button id="pause-menu" class="ghost-button" type="button">MENU</button>
+          </div>
         </div>
       </section>
 
-      <section id="pause-screen" class="screen modal-screen is-hidden">
-        <div class="modal-card compact plate">
-          <p class="eyebrow bright">PAUSA TÁTICA</p><h2>Recalibre.</h2><p class="modal-copy">A cidade espera. Seu AETHER-X está seguro.</p>
-          <div class="modal-actions stack"><button id="resume-button" class="button button-primary"><span>RETOMAR MISSÃO</span><b>▶</b></button><button id="restart-button" class="button button-quiet">REINICIAR MISSÃO</button><button class="button button-quiet" data-action="menu">SAIR PARA O MENU</button></div>
+      <section id="result-screen" class="screen modal" aria-labelledby="result-title">
+        <div class="modal-card plate">
+          <p class="eyebrow" id="result-eyebrow">RELATÓRIO DE VOO</p>
+          <h2 id="result-title">Missão Concluída</h2>
+          <p id="result-copy" class="modal-copy"></p>
+          <div class="medal-Strip" id="result-medals" aria-label="Medalha obtida"></div>
+          <div class="result-payout-box" id="result-payout-box">
+            <div>
+              <span class="eyebrow">PAGAMENTO DA OPERAÇÃO</span>
+              <strong id="result-credits-earned">+CR$ 0</strong>
+              <small id="result-credits-breakdown">Saldo total: CR$ 800</small>
+            </div>
+            <div class="result-hangar-links">
+              <button id="result-hangar-button" class="secondary-button tiny-button" type="button">LOJA DE DRONES</button>
+              <button id="result-upgrades-button" class="secondary-button tiny-button" type="button">UPGRADES DO DRONE</button>
+            </div>
+          </div>
+          <div class="briefing-details">
+            <div><span>PONTUAÇÃO</span><strong id="result-score">0</strong></div>
+            <div><span>TEMPO</span><strong id="result-time">00:00</strong></div>
+            <div><span>ESCUDO FINAL</span><strong id="result-shield">100%</strong></div>
+          </div>
+          <div class="action-row">
+            <button id="result-menu" class="ghost-button" type="button">MENU</button>
+            <button id="result-retry" class="secondary-button" type="button">JOGAR NOVAMENTE</button>
+            <button id="result-next" class="primary-button" type="button">PRÓXIMA MISSÃO</button>
+          </div>
         </div>
       </section>
 
-      <section id="result-screen" class="screen modal-screen is-hidden">
-        <div class="modal-card compact plate result-card">
-          <p class="eyebrow bright" id="result-kicker">MISSÃO CONCLUÍDA</p><div class="result-medal" id="result-medal">✦</div><h2 id="result-title">Espaço aéreo recuperado.</h2><p class="modal-copy" id="result-copy"></p>
-          <div class="result-stats"><div><span class="eyebrow">TEMPO</span><strong id="result-time">00:00</strong></div><div><span class="eyebrow">ESCUDO</span><strong id="result-shield">100%</strong></div><div><span class="eyebrow">PONTUAÇÃO</span><strong id="result-score">0000</strong></div></div>
-          <div class="modal-actions stack"><button id="result-primary" class="button button-primary"><span>PRÓXIMA MISSÃO</span><b>↗</b></button><button id="result-retry" class="button button-quiet">TENTAR NOVAMENTE</button><button class="button button-quiet" data-action="menu">VOLTAR AO MENU</button></div>
+      <section id="hangar-modal" class="screen modal" aria-labelledby="hangar-title">
+        <div class="modal-card plate xl-modal">
+          <div class="modal-header-row">
+            <div>
+              <p class="eyebrow">HANGAR TÁTICO &amp; COMÉRCIO DE AERONAVES</p>
+              <h2 id="hangar-title">Painel de Seleção e Compra de Drones</h2>
+            </div>
+            <div class="top-actions">
+              <span id="hangar-credits-pill" class="pill credits-pill">CR$ 800</span>
+              <div class="style-toggle-group" role="tablist" aria-label="Frota do Hangar">
+                <button id="hangar-tab-realistic" class="style-tab selected" type="button">FROTA REALISTA (4)</button>
+                <button id="hangar-tab-futuristic" class="style-tab" type="button">FROTA CYBERPUNK (4)</button>
+              </div>
+            </div>
+          </div>
+          <p class="modal-copy compact-lead">
+            Compre novos drones com o dinheiro (CR$) ganho em cada fase. <strong>Dica:</strong> Cada drone possui sua própria oficina de upgrades exclusivos — um modelo anterior totalmente melhorado supera o próximo modelo básico de fábrica!
+          </p>
+          <div id="hangar-drone-grid" class="hangar-drone-grid" role="list" aria-label="Drones disponíveis para compra e seleção"></div>
+          <div class="action-row">
+            <button id="hangar-close-button" class="ghost-button" type="button">FECHAR HANGAR</button>
+            <button id="hangar-open-upgrades-button" class="primary-button" type="button">IR PARA UPGRADES DO DRONE EQUIPADO</button>
+          </div>
         </div>
       </section>
 
-      <section id="settings-screen" class="screen modal-screen is-hidden">
-        <div class="modal-card compact plate">
-          <button class="close-button" data-action="menu" aria-label="Voltar ao menu">×</button>
-          <p class="eyebrow bright">PREFERÊNCIAS DE VOO</p><h2>Configurações</h2>
-          <label class="setting-row"><span>VOLUME DO SISTEMA</span><output id="volume-output">70%</output><input id="volume-slider" type="range" min="0" max="100" value="70" /></label>
-          <div class="setting-row"><span>ÁUDIO</span><button id="mute-button" class="button button-quiet">SILENCIAR ÁUDIO</button></div>
-          <div class="setting-row theme-setting"><span>COR DO AETHER</span><div class="theme-buttons"><button class="theme-swatch active" data-theme="cyan" aria-label="Ciano"></button><button class="theme-swatch crimson" data-theme="crimson" aria-label="Rubi"></button><button class="theme-swatch gold" data-theme="gold" aria-label="Solaris"></button></div></div>
-          <div class="modal-actions"><button class="button button-quiet" data-action="menu">VOLTAR</button></div>
+      <section id="upgrades-modal" class="screen modal" aria-labelledby="upgrades-title">
+        <div class="modal-card plate xl-modal">
+          <div class="modal-header-row">
+            <div>
+              <p class="eyebrow" id="upgrades-eyebrow">OFICINA DE ENGENHARIA EXCLUSIVA POR AERONAVE</p>
+              <h2 id="upgrades-title">Painel de Upgrades do Drone Atual</h2>
+            </div>
+            <div class="top-actions">
+              <span id="upgrades-credits-pill" class="pill credits-pill">CR$ 800</span>
+              <span id="upgrades-rating-pill" class="mode-badge">RATING 100</span>
+            </div>
+          </div>
+          <div class="upgrades-drone-Banner">
+            <div>
+              <strong id="upgrades-drone-name">DJI Mavic 3 Tactical</strong>
+              <span id="upgrades-drone-desc">Os upgrades comprados aqui pertencem exclusivamente a este drone e não são compartilhados com outros modelos.</span>
+            </div>
+            <div id="upgrades-owned-switcher" class="style-toggle-group" aria-label="Alternar entre drones adquiridos"></div>
+          </div>
+          <div id="upgrades-tier-comparison" class="tier-comparison-bar"></div>
+          <div id="upgrades-track-list" class="upgrades-track-list" role="list" aria-label="Trilhas de melhoria do drone"></div>
+          <div class="action-row">
+            <button id="upgrades-back-hangar" class="secondary-button" type="button">TROCAR / COMPRAR OUTRO DRONE</button>
+            <button id="upgrades-close-button" class="primary-button" type="button">CONCLUIR E VOLTAR</button>
+          </div>
         </div>
       </section>
 
-      <div id="audio-hint" class="audio-hint is-hidden">CLIQUE PARA ATIVAR O ÁUDIO</div>
-    </main>
+      <section id="settings-screen" class="screen modal" aria-labelledby="settings-title">
+        <div class="modal-card plate">
+          <p class="eyebrow">PAINEL DE ENGENHARIA</p>
+          <h2 id="settings-title">Configurações</h2>
+          <label class="setting-row" for="volume-range">
+            <span>Volume Geral</span>
+            <input id="volume-range" type="range" min="0" max="100" value="70" />
+          </label>
+          <div class="setting-row">
+            <span>Tema do HUD</span>
+            <div class="theme-group" role="group" aria-label="Tema de cores">
+              <button data-theme="cyan" class="theme-chip selected" type="button">CIANO</button>
+              <button data-theme="crimson" class="theme-chip" type="button">CARMIM</button>
+              <button data-theme="gold" class="theme-chip" type="button">OURO</button>
+            </div>
+          </div>
+          <div class="setting-row">
+            <span>Qualidade Gráfica</span>
+            <div class="quality-group" role="group" aria-label="Qualidade gráfica">
+              <button data-quality="low" class="quality-chip" type="button">BAIXA</button>
+              <button data-quality="medium" class="quality-chip" type="button">MÉDIA</button>
+              <button data-quality="high" class="quality-chip" type="button">ALTA</button>
+              <button data-quality="auto" class="quality-chip selected" type="button">AUTO</button>
+            </div>
+          </div>
+          <div class="setting-row">
+            <span>Modelo de Voo</span>
+            <div class="flight-model-group" role="group" aria-label="Modelo de voo">
+              <button id="flight-model-arcade" data-flight-model="arcade" class="flight-chip selected" type="button" title="Voo ágil, curvas com auto-nivelamento rápido e mira assistida ampla">ARCADE</button>
+              <button id="flight-model-sim" data-flight-model="sim" class="flight-chip" type="button" title="Física simulador realista, inércia de pitch/roll, sustentação de vento e efeito solo">SIMULADOR</button>
+            </div>
+          </div>
+          <div class="action-row">
+            <button id="reset-progress" class="ghost-button" type="button">ZERAR PROGRESSO</button>
+            <button id="settings-close" class="primary-button" type="button">FECHAR</button>
+          </div>
+        </div>
+      </section>
+    </div>
 
-    <!-- SOURCE FILE GUIDANCE START -->
-    <aside id="source-file-guide" hidden>
-      <p class="guide-kicker">AETHER DEFENSE NETWORK // 2089</p>
-      <h1>AETHER<span>-X</span></h1>
-      <p class="guide-copy">Esta é a entrada de desenvolvimento. Para jogar agora, abra a versão já compilada e pronta para uso offline.</p>
-      <a class="guide-link" href="./AETHER-X-offline.html">ABRIR A VERSÃO OFFLINE <span aria-hidden="true">↗</span></a>
-      <p class="guide-foot">Um arquivo. Seis missões e um modo rio. Nenhuma conexão necessária.</p>
-    </aside>
-    <script>
-      if (location.protocol === 'file:') {
-        document.documentElement.classList.add('source-file-open');
-        document.getElementById('source-file-guide').hidden = false;
-      }
-    </script>
-    <style>
-      #source-file-guide[hidden] { display: none; }
-      html.source-file-open, html.source-file-open body { width: 100%; min-height: 100%; margin: 0; background: radial-gradient(ellipse at 50% 0%, #102a38 0%, #080d15 52%, #04070c 100%); color: #e8f5f8; font-family: Inter, ui-sans-serif, system-ui, 'Segoe UI', sans-serif; }
-      html.source-file-open body { display: grid; place-items: center; padding: 24px; }
-      html.source-file-open #app { display: none; }
-      html.source-file-open #source-file-guide { display: block; width: min(680px, 100%); padding: clamp(28px, 7vw, 64px); border: 1px solid rgba(99, 206, 228, .32); background: linear-gradient(145deg, rgba(12, 27, 41, .96), rgba(6, 12, 21, .96)); box-shadow: 0 24px 90px #0009, inset 0 1px #c8faff12; }
-      html.source-file-open .guide-kicker { color: #8da3b1; font-size: 11px; font-weight: 700; letter-spacing: .2em; }
-      html.source-file-open #source-file-guide h1 { margin: 28px 0 12px; color: #e8f5f8; font-size: clamp(42px, 10vw, 76px); letter-spacing: -.07em; }
-      html.source-file-open #source-file-guide h1 span { color: #39e5ef; }
-      html.source-file-open .guide-copy { max-width: 500px; color: #aabac6; font-size: 17px; line-height: 1.7; }
-      html.source-file-open .guide-link { display: inline-flex; gap: 16px; align-items: center; margin-top: 20px; padding: 15px 20px; background: #39e5ef; color: #061116; font-size: 12px; font-weight: 850; letter-spacing: .1em; text-decoration: none; }
-      html.source-file-open .guide-link:hover { background: #9bf8fb; }
-      html.source-file-open .guide-foot { margin-top: 36px; color: #718693; font-size: 12px; }
-    </style>
-    <!-- SOURCE FILE GUIDANCE END -->
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
