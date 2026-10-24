@@ -1,8 +1,8 @@
 /**
  * Perfis de estilo global do AETHER-X.
  *
- * O estilo visual (Realista / Futurista) também define o modelo de voo
- * (simulador vs. arcade) e o armamento (metralhadora traçante vs. laser).
+ * O estilo visual escolhe cenário, aeronave e armamento. O modelo de voo
+ * (simulador ou arcade) é uma configuração independente.
  * Módulo puro: sem dependência de Three.js ou DOM, testável em Node.
  */
 export type VisualStyle = 'realistic' | 'futuristic';
@@ -92,14 +92,6 @@ export const FLIGHT_PROFILES_BY_MODEL: Readonly<Record<FlightModel, FlightProfil
     aimAssistCone: 0.91,
     aimAssistStrength: 1,
   },
-};
-
-/**
- * Mapeamento legado indexado por VisualStyle para retrocompatibilidade com testes e módulos existentes.
- */
-export const FLIGHT_PROFILES: Readonly<Record<VisualStyle, FlightProfile>> = {
-  realistic: FLIGHT_PROFILES_BY_MODEL.sim,
-  futuristic: FLIGHT_PROFILES_BY_MODEL.arcade,
 };
 
 export function flightProfileFor(model: FlightModel): FlightProfile {

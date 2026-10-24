@@ -1056,8 +1056,8 @@ export function populateClassicColliders(
     // Promontórios laterais em x = ±44, z = -125
     collision.addSphere(-44, 8, -125, 9.5, 'rock');
     collision.addSphere(44, 8, -125, 9.5, 'rock');
-    // Cabana real na margem direita em (50, 5, 10)
-    collision.addBox(50, 5.2, 10, 4.2, 5.2, 4.2, 0, 'wood');
+    // Cabana real na margem direita em (44, 5, -42), alinhada à cena de buildRiver.
+    collision.addBox(44, 5.2, -42, 4.8, 5.2, 5.1, 0, 'wood');
     return;
   }
 

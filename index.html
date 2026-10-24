@@ -34,12 +34,12 @@
             <!-- VISÃO 1: MENU PRINCIPAL HUB (3 Modos + Loja de Drones + Upgrades + Configurações) -->
             <div id="menu-hub-view" class="menu-subview">
               <div class="hero-top-row">
-                <p class="eyebrow">CENTRAL DE OPERAÇÕES · ESCOLHA O MODO DE VOO E O UNIVERSO</p>
+                <p class="eyebrow">CENTRAL DE OPERAÇÕES · ESCOLHA O UNIVERSO VISUAL</p>
                 <span id="hub-active-universe-badge" class="mode-badge">UNIVERSO ATIVO: REALISTA</span>
               </div>
               <h1 id="game-title">AETHER<span>-X</span></h1>
               <p id="hero-lead" class="lead">
-                Selecione um modo abaixo para escolher entre <strong>Modo Realista</strong> ou <strong>Modo Cyberpunk</strong>. Ganhe créditos (CR$) em cada fase para comprar novos drones e melhorar exclusivamente o seu drone atual!
+                Escolha o universo visual da missão. O voo arcade é o padrão nos dois universos; selecione o simulador nas configurações se preferir. Ganhe créditos (CR$) para equipar e aprimorar seus drones.
               </p>
 
               <div class="hub-modes-grid" role="list" aria-label="Modos principais de jogo">
@@ -50,7 +50,7 @@
                       <span id="hub-campaign-progress" class="mode-badge">1 / 10 FASES</span>
                     </div>
                     <strong>Campanha Tática</strong>
-                    <span>Escolha jogar a Campanha Realista (10 fases com física simulador) ou a Campanha Cyberpunk (8 fases neon).</span>
+                    <span>10 operações em biomas naturais ou 8 missões neon. O perfil de voo é independente do universo visual.</span>
                   </div>
                   <button id="hub-campaign-button" class="primary-button compact-button" type="button">
                     ESCOLHER CAMPANHA (REALISTA / CYBERPUNK)
@@ -81,7 +81,7 @@
                       <span id="river-style-pill" class="mode-badge">REALISTA / CYBERPUNK</span>
                     </div>
                     <strong>Vale da Cachoeira</strong>
-                    <span>Atravesse o cânion fluvial e a grande queda d'água escolhendo entre expedição naturalista DJI ou incursão Cyberpunk Neon.</span>
+                    <span>Voe pelo rio, pela floresta e pela cachoeira em uma expedição naturalista ou em uma incursão cyberpunk.</span>
                   </div>
                   <button id="river-mode-button" class="primary-button compact-button" type="button">
                     ESCOLHER VALE DA CACHOEIRA (REALISTA / CYBERPUNK)
@@ -213,22 +213,22 @@
           <p class="eyebrow" id="modal-mode-eyebrow">SELEÇÃO DE UNIVERSO · CAMPANHA / MUNDO ABERTO / CACHOEIRA</p>
           <h2 id="river-style-title">Escolha o Modo: Realista ou Cyberpunk</h2>
           <p id="river-style-copy" class="modal-copy">
-            Escolha se deseja operar no Modo Realista (simulação aerodinâmica, vento, munição balística e cenários naturais/urbanos) ou no Modo Cyberpunk (voo arcade neon de alta velocidade e canhões de plasma).
+            Escolha a aparência, os drones e o armamento do universo. O modelo de voo arcade ou simulador é ajustado separadamente nas configurações.
           </p>
           <div class="style-choice-grid">
             <button id="river-select-realistic" class="style-choice-card selected" type="button">
-              <span class="choice-badge">MODO REALISTA · DJI / TÁTICO</span>
+              <span class="choice-badge">UNIVERSO NATURAL · DJI / TÁTICO</span>
               <h3>Modo Realista</h3>
-              <p id="modal-realistic-desc">Física com inércia angular, vento cruzado, efeito solo, munição balística com recarga e colisão 3D real.</p>
+              <p id="modal-realistic-desc">Cenários naturais, frota tática, armamento balístico e HUD óptico. O voo arcade é o padrão; escolha o simulador separadamente nas configurações.</p>
               <ul class="choice-specs">
                 <li><strong>Frota Realista:</strong> DJI Mavic 3, Apex FPV Racer, Matrice 600 Hex e VANT Predator.</li>
                 <li><strong>Cenários &amp; Alvos:</strong> Luz solar naturalista, VANTs, lanchas, antiaéreas e helicóptero de ataque.</li>
               </ul>
             </button>
             <button id="river-select-futuristic" class="style-choice-card" type="button">
-              <span class="choice-badge cyber">MODO CYBERPUNK · NEON ARCADE</span>
+              <span class="choice-badge cyber">UNIVERSO CYBERPUNK · NEON</span>
               <h3>Modo Cyberpunk</h3>
-              <p id="modal-futuristic-desc">Resposta imediata de voo arcade, atmosfera synthwave bioluminescente, bloom intenso e canhões de plasma.</p>
+              <p id="modal-futuristic-desc">Cenários neon, esquadrões biomecânicos e canhões de plasma. Usa o modelo de voo selecionado nas configurações.</p>
               <ul class="choice-specs">
                 <li><strong>Frota Cyberpunk:</strong> AETHER-X Mk.I, Specter-V, Valkyrie Hex-Gunship e Omega-Core.</li>
                 <li><strong>Cenários &amp; Alvos:</strong> Megacidade Neo-Aether, cânion bioluminescente e esquadrões biomecânicos.</li>
@@ -274,6 +274,8 @@
             <strong id="hud-objective">ATRAVESSAR BALIZAS</strong>
             <div class="progress-track" aria-hidden="true"><div id="hud-progress" class="progress-fill"></div></div>
           </div>
+
+          <div id="perf-readout" class="perf-readout plate hidden" aria-live="off">FPS --</div>
 
           <div class="hud-buttons">
             <button id="hud-mute" class="icon-button plate" type="button" aria-label="Alternar som">SOM</button>
@@ -342,10 +344,10 @@
           </div>
 
           <div class="controls-hint plate" aria-label="Atalhos de controle">
-            <div><span class="control-label">VOO</span><span class="control-keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span></div>
-            <div><span class="control-label">ALTITUDE</span><span class="control-keys"><kbd>ESPAÇO</kbd><kbd>C</kbd></span></div>
+            <div><span class="control-label">VELOCIDADE / DIREÇÃO</span><span class="control-keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span></div>
+            <div><span class="control-label">SUBIR / DESCER</span><span class="control-keys"><kbd>ESPAÇO</kbd><kbd>C</kbd></span></div>
             <div><span class="control-label">TURBO</span><span class="control-keys"><kbd>SHIFT</kbd></span></div>
-            <div><span class="control-label">DISPARO</span><span class="control-keys"><kbd>F</kbd><kbd>CLIQUE</kbd><kbd>R</kbd><kbd>E</kbd></span></div>
+            <div><span class="control-label">DISPARO / AÇÃO</span><span class="control-keys"><kbd>F</kbd><kbd>CLIQUE</kbd><kbd>E</kbd></span></div>
             <div><span class="control-label">CÂMERA</span><span class="control-keys"><kbd>V</kbd><kbd>TAB</kbd></span></div>
           </div>
         </footer>
@@ -474,10 +476,10 @@
             </div>
           </div>
           <div class="setting-row">
-            <span>Modelo de Voo</span>
+            <span>Modelo de Voo · independente do visual</span>
             <div class="flight-model-group" role="group" aria-label="Modelo de voo">
-              <button id="flight-model-arcade" data-flight-model="arcade" class="flight-chip selected" type="button" title="Voo ágil, curvas com auto-nivelamento rápido e mira assistida ampla">ARCADE</button>
-              <button id="flight-model-sim" data-flight-model="sim" class="flight-chip" type="button" title="Física simulador realista, inércia de pitch/roll, sustentação de vento e efeito solo">SIMULADOR</button>
+              <button id="flight-model-arcade" data-flight-model="arcade" class="flight-chip selected" type="button" aria-pressed="true" title="Voo ágil, curvas com auto-nivelamento rápido e mira assistida ampla">ARCADE</button>
+              <button id="flight-model-sim" data-flight-model="sim" class="flight-chip" type="button" aria-pressed="false" title="Voo com inércia de pitch e roll, influência do vento e efeito solo">SIMULADOR</button>
             </div>
           </div>
           <div class="action-row">

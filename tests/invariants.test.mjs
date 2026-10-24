@@ -173,6 +173,16 @@ test('salvamento local tolera dados inválidos e limita configurações e record
   const completedLegacyCampaign = storage.loadSave();
   assert.equal(completedLegacyCampaign.unlocked, 4, 'quem já venceu o chefe final recebe acesso à primeira missão nova');
   assert.equal(completedLegacyCampaign.records.sentinel.score, 5200);
+  data.delete('aether-x-save-v2');
+  data.set('aether-x-save-v1', JSON.stringify({
+    unlocked: 5,
+    flightModel: 'sim',
+    records: { intercept: { medal: 2, score: 1400, time: 90, shield: 62 } },
+  }));
+  const legacyFlightChoice = storage.loadSave();
+  assert.equal(legacyFlightChoice.unlocked, 5, 'migração preserva a progressão já desbloqueada');
+  assert.equal(legacyFlightChoice.flightModel, 'sim', 'migração preserva uma escolha explícita de simulador');
+  assert.equal(legacyFlightChoice.records.intercept.score, 1400, 'migração preserva recordes da campanha');
   storage.saveExtras({ completedTasks: ['ow-express', 'ow-express'], bestScore: 4200, riverStyle: 'futuristic' });
   const extras = storage.loadExtras();
   assert.deepEqual(extras.completedTasks, ['ow-express']);
@@ -261,16 +271,16 @@ test('CollisionWorld detecta contatos 3D, oclusão de projétil por segmento e l
   assert.equal(world.hasLineOfSight(0, 8, 0, 0, 8, -35), true);
 });
 
-test('física de voo simulador responde a vento, efeito solo, massa de carga e impacto estrutural', () => {
-  const sim = styleProfile.FLIGHT_PROFILES.realistic;
-  const arc = styleProfile.FLIGHT_PROFILES.futuristic;
+test('perfil de simulador responde a vento, efeito solo e impacto sem depender do visual', () => {
+  const sim = styleProfile.FLIGHT_PROFILES_BY_MODEL.sim;
+  const arc = styleProfile.FLIGHT_PROFILES_BY_MODEL.arcade;
   const zeroState = { vx: 0, vy: 0, vz: 0, yaw: 0, pitch: 0, roll: 0, yawVelocity: 0 };
   const input = { forward: 1, turn: 0, lift: 0, boost: false };
   const calmEnv = { windX: 0, windY: 0, windZ: 0, proximity: 0, groundGap: 10, cargoMass: 0 };
 
   const stepSim = physics.advanceFlight(zeroState, input, sim, calmEnv, 0.05);
   const stepArc = physics.advanceFlight(zeroState, input, arc, calmEnv, 0.05);
-  assert.ok(Math.abs(stepArc.pitch) > Math.abs(stepSim.pitch), 'modo futurista inclina mais rápido que o simulador');
+  assert.ok(Math.abs(stepArc.pitch) > Math.abs(stepSim.pitch), 'perfil arcade inclina mais rápido que o simulador');
 
   const windyState = physics.advanceFlight(
     zeroState,
@@ -343,6 +353,8 @@ test('colisores do Vale da Cachoeira e da Represa estão alinhados com a malha 3
   assert.equal(riverWorld.sphereContacts(27, 30, -84, 1.35).length, 0, 'sem barreira invisível em (27, 30, -84)');
   // O paredão real da cachoeira fica em z = -138
   assert.ok(riverWorld.sphereContacts(0, 10, -133, 1.35).length > 0, 'paredão real da cachoeira em z=-138 bloqueia impacto');
+  assert.ok(riverWorld.sphereContacts(44, 5.2, -42, 1.0).length > 0, 'cabana reposicionada tem colisão alinhada ao marco visual');
+  assert.equal(riverWorld.sphereContacts(50, 5.2, 10, 1.0).length, 0, 'posição antiga da cabana fica livre para o voo');
 
   const damWorld = new collision.CollisionWorld(18);
   sceneryRealistic.populateClassicColliders('dam', damWorld);
@@ -358,7 +370,7 @@ test('atalhos do HUD cabem em linhas agrupadas incluindo a alternância de câme
   const panel = html.match(/<div class="controls-hint plate"[\s\S]*?<\/div>\s*<\/footer>/)?.[0];
   assert.ok(panel, 'painel de controles encontrado');
   const rows = [...panel.matchAll(/<div><span class="control-label">([^<]+)<\/span><span class="control-keys">([\s\S]*?)<\/span><\/div>/g)];
-  assert.deepEqual(rows.map(([, label]) => label), ['VOO', 'ALTITUDE', 'TURBO', 'DISPARO', 'CÂMERA']);
+  assert.deepEqual(rows.map(([, label]) => label), ['VELOCIDADE / DIREÇÃO', 'SUBIR / DESCER', 'TURBO', 'DISPARO / AÇÃO', 'CÂMERA']);
   assert.ok(rows.every(([, , keys]) => (keys.match(/<kbd>/g) ?? []).length > 0));
   assert.match(css, /\.controls-hint\s*\{[^}]*grid-template-columns:\s*1fr/);
   assert.match(css, /\.controls-hint\s*>\s*div\s*\{[^}]*justify-content:\s*space-between/);
@@ -484,7 +496,7 @@ test('interface HTML possui todos os novos modais e visões do Hub, Hangar e Upg
 });
 
 test('estabilização ativa de hover (GPS/Altitude hold) freia o drone e impede movimento involuntário sem comando', () => {
-  const sim = styleProfile.FLIGHT_PROFILES.realistic;
+  const sim = styleProfile.FLIGHT_PROFILES_BY_MODEL.sim;
   // Drone em movimento inicial solta os comandos (forward: 0, turn: 0, lift: 0)
   let state = { vx: 4.0, vy: 1.0, vz: -4.0, yaw: 0, pitch: 0, roll: 0, yawVelocity: 0 };
   const releaseInput = { forward: 0, turn: 0, lift: 0, boost: false };
@@ -541,6 +553,12 @@ test('Vale Atlântico possui relevo da Mata Atlântica de até 42m e interface c
   assert.ok(html.includes('id="ow-toggle-list"'), 'botão de alternar lista de tasks existe');
   assert.ok(html.includes('id="flight-model-arcade"'), 'opção de voo arcade existe');
   assert.ok(html.includes('id="flight-model-sim"'), 'opção de voo simulador existe');
+  assert.ok(html.includes('independente do visual'), 'configurações explicam que o voo não depende do universo visual');
+  const main = await readFile(path.join(projectRoot, 'src/main.ts'), 'utf8');
+  assert.match(main, /W\/S acelera e freia; A\/D guina; Espaço\/C ajusta altitude; Shift ativa turbo; clique\/F dispara; V alterna a câmera/, 'briefing do treinamento explica os controles essenciais');
+  assert.match(main, /URLSearchParams\(window\.location\.search\)\.has\('perf'\)/, 'medição de FPS só aparece no modo de diagnóstico');
+  const gameSource = await readFile(path.join(projectRoot, 'src/game.ts'), 'utf8');
+  assert.match(gameSource, /measuredFps = Math\.round\(this\.fpsFrames \/ this\.fpsElapsed\)/, 'FPS vem de quadros reais e tempo decorrido');
 });
 
 test('colisores da Megacidade e do Mundo Aberto Cyberpunk cobrem 100% dos prédios instanciados e estruturas', () => {

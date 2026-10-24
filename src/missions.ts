@@ -138,10 +138,10 @@ export const RIVER_STYLE_CONFIGS: Record<
   realistic: {
     id: 'realistic',
     label: 'Modo Realista',
-    badge: 'SIMULAÇÃO TÁTICA · DJI SPEC',
-    subtitle: 'Voo de simulador com vento/inércia, metralhadora traçante, HUD OSD óptico e alvos militares reais.',
+    badge: 'BIOMA NATURAL · DJI SPEC',
+    subtitle: 'Armamento balístico, HUD OSD óptico e alvos táticos em cenários naturais.',
     summary:
-      'Condições atmosféricas naturais, física de voo com inércia angular, colisão real, destroços com gravidade e alvos táticos.',
+      'Condições atmosféricas naturais, colisão 3D, destroços com gravidade e alvos táticos. Voo arcade padrão; simulador opcional nas configurações.',
     droneDesc: 'Chassi em fibra de carbono fosca, hélices com pontas laranja de segurança e câmera óptica OSD.',
     enemyDesc: 'Frota militar realista: FPV kamikaze, VANT de asa fixa, torretas AA, lanchas e helicóptero de ataque.',
     palette: { background: 0x8ea9ad, fog: 0x9ab3b3, gridCenter: 0x4b7473, gridLines: 0x355354 },
@@ -150,7 +150,7 @@ export const RIVER_STYLE_CONFIGS: Record<
     id: 'futuristic',
     label: 'Modo Futurista',
     badge: 'INCURSÃO CYBERPUNK · NEON',
-    subtitle: 'Voo arcade de resposta rápida, canhões de plasma, HUD holográfico neon e esquadrões biomecânicos.',
+    subtitle: 'Canhões de plasma, HUD holográfico neon e esquadrões biomecânicos.',
     summary:
       'Combates de alta voltagem em cenários iluminados por neon, com física de impacto e destroços energizados.',
     droneDesc: 'Interceptador AETHER-X com anéis de plasma, conduítes luminescentes e propulsão sobrecarga.',
@@ -639,7 +639,7 @@ export const REALISTIC_OPEN_WORLD_MODE: MissionDefinition = {
   objectiveKind: 'openworld',
   objectiveTarget: 8,
   hudTarget: 'EXPLORAR VALE ATLÂNTICO · 08 OPERAÇÕES DISPONÍVEIS',
-  threat: 'Dinâmica · Simulador Urbano + 8 Operações Reais',
+  threat: 'Dinâmica · Tráfego Urbano + 8 Operações Táticas',
   medalTargets: { goldScore: 4200, silverScore: 2600, goldTime: 220 },
   palette: { background: 0x87b4d6, fog: 0x9ec3de, gridCenter: 0x466985, gridLines: 0x2e485c },
 };

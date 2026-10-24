@@ -24,18 +24,18 @@ export function cameraFollowProfile(speed: number, close = false): CameraFollowP
   const pace = Math.max(0, Math.min(1, speed / 42));
   return close
     ? {
-        height: 2.8 + pace * 0.3,
-        distance: 7.2 + pace * 0.7,
-        lookAhead: 9 + pace * 2,
-        fieldOfView: 58 + pace * 7,
-        targetElevation: 0.95 + pace * 0.2,
+        height: 3.8 + pace * 0.3,
+        distance: 14.5 + pace * 1,
+        lookAhead: 12 + pace * 2,
+        fieldOfView: 61 + pace * 6,
+        targetElevation: 1.3 + pace * 0.2,
       }
     : {
-        height: 4.2 + pace * 0.45,
-        distance: 11.5 + pace * 1.2,
-        lookAhead: 12 + pace * 3,
-        fieldOfView: 55 + pace * 10,
-        targetElevation: 1.45 + pace * 0.25,
+        height: 5.8 + pace * 0.5,
+        distance: 24.5 + pace * 1.8,
+        lookAhead: 19 + pace * 3,
+        fieldOfView: 58 + pace * 8,
+        targetElevation: 2.2 + pace * 0.3,
       };
 }
 
@@ -200,7 +200,7 @@ export interface FlightEnvironmentSample {
 
 /**
  * Avança o estado dinâmico de voo do drone de forma independente de FPS.
- * No perfil Realista (simulador), a inércia angular de pitch/roll governa a aceleração
+ * No perfil simulador, a inércia angular de pitch/roll governa a aceleração
  * e o vento/turbulência/massa de carga afetam a trajetória.
  */
 export function advanceFlight(

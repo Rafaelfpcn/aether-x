@@ -79,7 +79,28 @@ function waterTexture(vertical = false, river = false): THREE.CanvasTexture {
   gradient.addColorStop(1, vertical ? '#e3f0e9' : river ? '#3e6465' : '#1a4653');
   context.fillStyle = gradient;
   context.fillRect(0, 0, 256, 256);
-  for (let row = 0; row < (river ? 72 : 42); row++) {
+  if (river && !vertical) {
+    // Fluxo com marcas quebradas e espaçamento irregular; evita o padrão de listras de uma textura procedural repetida.
+    const rippleRandom = seededRandom(7049);
+    for (let index = 0; index < 420; index++) {
+      const x = rippleRandom() * 256;
+      const y = rippleRandom() * 256;
+      const length = 5 + rippleRandom() * 31;
+      context.beginPath();
+      context.moveTo(x, y);
+      context.bezierCurveTo(
+        x + length * 0.3,
+        y - 1 + rippleRandom() * 2,
+        x + length * 0.72,
+        y - 1 + rippleRandom() * 2,
+        x + length,
+        y - 0.5 + rippleRandom(),
+      );
+      context.strokeStyle = index % 7 === 0 ? 'rgba(228, 242, 224, .2)' : 'rgba(186, 220, 207, .12)';
+      context.lineWidth = index % 7 === 0 ? 1.4 + rippleRandom() * 1.2 : 0.65 + rippleRandom() * 0.75;
+      context.stroke();
+    }
+  } else for (let row = 0; row < 42; row++) {
     const base = (row / (river ? 72 : 42)) * 256;
     context.beginPath();
     if (vertical) {
@@ -97,7 +118,7 @@ function waterTexture(vertical = false, river = false): THREE.CanvasTexture {
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(vertical ? 1.2 : 2.8, vertical ? 2.8 : 10);
+  texture.repeat.set(vertical ? 1.2 : river ? 3.6 : 2.8, vertical ? 2.8 : river ? 4.2 : 10);
   return texture;
 }
 
@@ -105,8 +126,8 @@ function addWater(root: THREE.Group, textures: THREE.Texture[], width: number, l
   const texture = waterTexture(false, river);
   textures.push(texture);
   const material = new THREE.MeshPhysicalMaterial({
-    color, map: texture, metalness: river ? 0.02 : 0.08, roughness: river ? 0.4 : 0.28, clearcoat: river ? 0.4 : 0.68,
-    clearcoatRoughness: river ? 0.35 : 0.18, side: THREE.DoubleSide,
+    color: river ? 0x71938a : color, map: texture, metalness: river ? 0.01 : 0.08, roughness: river ? 0.48 : 0.28, clearcoat: river ? 0.2 : 0.68,
+    clearcoatRoughness: river ? 0.48 : 0.18, side: THREE.DoubleSide,
   });
   const water = new THREE.Mesh(new THREE.PlaneGeometry(width, length), material);
   water.rotation.x = -Math.PI / 2;
@@ -446,7 +467,12 @@ function buildDam(root: THREE.Group, textures: THREE.Texture[]): void {
 }
 
 function isInsideCabinClearing(x: number, z: number): boolean {
-  return x > 32 && x < 64 && z > -16 && z < 26;
+  return x > 32 && x < 64 && z > -61 && z < -24;
+}
+
+function moveOutsideCabinClearing(x: number, z: number, random: () => number): number {
+  if (!isInsideCabinClearing(x, z)) return z;
+  return z < -42 ? -70 - random() * 20 : 8 + random() * 20;
 }
 
 function buildRiver(root: THREE.Group, textures: THREE.Texture[]): THREE.Mesh {
@@ -574,10 +600,10 @@ function buildRiver(root: THREE.Group, textures: THREE.Texture[]): THREE.Mesh {
 
   // Cortinas principais de queda d'água com relevo de degrau intermediário e vertex colors
   const streams = [
-    { x: -18.8, width: 10.2, topY: 24.5, drop: 26.5, arch: 6.2, opacity: 0.92, seed: 101 },
-    { x: -6.4, width: 13.8, topY: 24.6, drop: 26.6, arch: 7.4, opacity: 0.96, seed: 202 },
-    { x: 7.0, width: 13.2, topY: 24.6, drop: 26.6, arch: 7.0, opacity: 0.95, seed: 303 },
-    { x: 18.4, width: 9.6, topY: 24.3, drop: 26.3, arch: 5.8, opacity: 0.9, seed: 404 },
+    { x: -18.8, width: 7.0, topY: 24.5, drop: 26.5, arch: 6.2, opacity: 0.88, seed: 101 },
+    { x: -6.4, width: 7.8, topY: 24.6, drop: 26.6, arch: 7.4, opacity: 0.91, seed: 202 },
+    { x: 7.0, width: 7.6, topY: 24.6, drop: 26.6, arch: 7.0, opacity: 0.9, seed: 303 },
+    { x: 18.4, width: 6.8, topY: 24.3, drop: 26.3, arch: 5.8, opacity: 0.86, seed: 404 },
   ] as const;
 
   for (const stream of streams) {
@@ -597,13 +623,13 @@ function buildRiver(root: THREE.Group, textures: THREE.Texture[]): THREE.Mesh {
     root.add(coreSheet);
 
     const outerVeil = new THREE.Mesh(
-      createWaterfallCurtainGeometry(stream.width * 1.16, stream.drop * 1.01, stream.arch + 1.45, stream.seed + 50),
+      createWaterfallCurtainGeometry(stream.width * 1.04, stream.drop * 1.01, stream.arch + 1.45, stream.seed + 50),
       new THREE.MeshBasicMaterial({
         color: 0xe8faf7,
         vertexColors: true,
         map: waterfallMistTex,
         transparent: true,
-        opacity: stream.opacity * 0.62,
+        opacity: stream.opacity * 0.42,
         blending: THREE.AdditiveBlending,
         side: THREE.DoubleSide,
         depthWrite: false,
@@ -696,9 +722,7 @@ function buildRiver(root: THREE.Group, textures: THREE.Texture[]): THREE.Mesh {
     const side = random() < 0.5 ? -1 : 1;
     let x = side * (riverWaterEdge(side) + 10 + random() * 53);
     let z = -144 + random() * 292;
-    if (isInsideCabinClearing(x, z)) {
-      z = z < 5 ? -22 - random() * 25 : 30 + random() * 25;
-    }
+    z = moveOutsideCabinClearing(x, z, random);
     const scale = 0.75 + random() * 0.92;
     const ground = riverbankHeight((Math.abs(x) - riverWaterEdge(side)) / 73, z);
     const yaw = random() * Math.PI * 2;
@@ -715,10 +739,13 @@ function buildRiver(root: THREE.Group, textures: THREE.Texture[]): THREE.Mesh {
 
     dummy.position.set(x, ground + 8.9 * scale, z);
     dummy.rotation.set(leanX, yaw, leanZ);
-    dummy.scale.set(4.5 * scale, 3.8 * scale, 4.4 * scale);
+    const crownWidth = 0.78 + random() * 0.46;
+    const crownHeight = 0.8 + random() * 0.4;
+    const crownDepth = 0.82 + random() * 0.42;
+    dummy.scale.set(4.5 * scale * crownWidth, 3.5 * scale * crownHeight, 4.4 * scale * crownDepth);
     dummy.updateMatrix();
     canopy.setMatrixAt(index, dummy.matrix);
-    canopyColor.setHSL(0.26 + random() * 0.08, 0.42 + random() * 0.16, 0.34 + random() * 0.12);
+    canopyColor.setHSL(0.28 + random() * 0.055, 0.28 + random() * 0.12, 0.14 + random() * 0.07);
     canopy.setColorAt(index, canopyColor);
 
     dummy.position.set(x + side * 2.1 * scale, ground + 7.4 * scale, z + 1.7 * scale);
@@ -741,16 +768,14 @@ function buildRiver(root: THREE.Group, textures: THREE.Texture[]): THREE.Mesh {
     const distance = 0.09 + undergrowthRandom() * 0.48;
     let z = -164 + undergrowthRandom() * 315;
     const x = side * (riverWaterEdge(side) + distance * 73);
-    if (isInsideCabinClearing(x, z)) {
-      z = z < 5 ? -20 - undergrowthRandom() * 20 : 28 + undergrowthRandom() * 20;
-    }
+    z = moveOutsideCabinClearing(x, z, undergrowthRandom);
     const size = 0.85 + undergrowthRandom() * 1.9;
     dummy.position.set(x, riverbankHeight(distance, z) + size * 0.28, z);
     dummy.rotation.set(undergrowthRandom() * 0.18, undergrowthRandom() * Math.PI * 2, undergrowthRandom() * 0.16);
     dummy.scale.set(size * 1.35, size * 0.88, size * 1.25);
     dummy.updateMatrix();
     undergrowth.setMatrixAt(index, dummy.matrix);
-    canopyColor.setHSL(0.25 + undergrowthRandom() * 0.11, 0.38 + undergrowthRandom() * 0.2, 0.28 + undergrowthRandom() * 0.14);
+    canopyColor.setHSL(0.28 + undergrowthRandom() * 0.055, 0.28 + undergrowthRandom() * 0.12, 0.12 + undergrowthRandom() * 0.07);
     undergrowth.setColorAt(index, canopyColor);
   }
   trunk.instanceMatrix.needsUpdate = true;
@@ -894,7 +919,8 @@ function buildRiver(root: THREE.Group, textures: THREE.Texture[]): THREE.Mesh {
   canoeGroup.rotation.y = 0.18;
   cabin.add(canoeGroup);
 
-  cabin.position.set(50, -1.9, 10);
+  // Fica na margem direita, visível já no primeiro trecho do rio e fora do corredor central de voo.
+  cabin.position.set(44, -1.9, -42);
   cabin.rotation.y = Math.PI / 2;
   root.add(cabin);
 
@@ -1539,9 +1565,7 @@ function buildRiverPalms(root: THREE.Group): void {
     const distRatio = 0.05 + random() * 0.26;
     const x = side * (riverWaterEdge(side) + distRatio * 73);
     let z = -138 + random() * 276;
-    if (isInsideCabinClearing(x, z)) {
-      z = z < 5 ? -20 - random() * 18 : 28 + random() * 18;
-    }
+    z = moveOutsideCabinClearing(x, z, random);
     const ground = riverbankHeight(distRatio, z);
     const scale = 0.78 + random() * 0.52;
     const yaw = (side < 0 ? 0 : Math.PI) + (random() - 0.5) * 1.1;
@@ -1555,7 +1579,7 @@ function buildRiverPalms(root: THREE.Group): void {
     palmCrowns.setMatrixAt(i, dummy.matrix);
 
     trunkColor.setHSL(0.08 + random() * 0.025, 0.28, 0.28 + random() * 0.08);
-    crownColor.setHSL(0.26 + random() * 0.06, 0.48 + random() * 0.14, 0.36 + random() * 0.1);
+    crownColor.setHSL(0.28 + random() * 0.05, 0.34 + random() * 0.1, 0.15 + random() * 0.08);
     palmTrunks.setColorAt(i, trunkColor);
     palmCrowns.setColorAt(i, crownColor);
   }

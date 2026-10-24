@@ -134,6 +134,9 @@ const hudTime = byId('hud-time');
 const hudMissionCode = byId('hud-mission-code');
 const hudObjective = byId('hud-objective');
 const hudProgress = byId('hud-progress');
+const perfReadout = byId('perf-readout');
+const showPerfReadout = new URLSearchParams(window.location.search).has('perf');
+perfReadout.classList.toggle('hidden', !showPerfReadout);
 const shieldBar = byId('shield-bar');
 const boostBar = byId('boost-bar');
 const bossBar = byId('boss-bar');
@@ -241,7 +244,7 @@ function setGlobalStyle(style: VisualStyle): void {
       : 'Operações de Campanha · Modo Cyberpunk (8 Fases)';
   byId('campaign-view-copy').textContent =
     style === 'realistic'
-      ? 'Domine as 10 operações realistas com física aerodinâmica, vento, balística e destruição 3D. Ganhe CR$ em cada missão!'
+      ? 'Domine 10 operações em biomas naturais com frota tática, armamento balístico e objetivos variados. O perfil de voo é independente do universo.'
       : 'Domine as 8 operações Cyberpunk em Neo-Aether e no Cânion. Ganhe CR$ em cada missão para comprar novos drones e upgrades!';
 
   selectedMission = latestCampaignMissionForStyle(style);
@@ -749,10 +752,10 @@ function openStyleChoiceModal(target: 'campaign' | 'river' | 'openworld'): void 
         : 'Vale da Cachoeira: Modo Realista ou Modo Cyberpunk?';
   byId('river-style-copy').textContent =
     target === 'campaign'
-      ? 'Escolha jogar as 10 operações da Campanha Realista (física aerodinâmica, vento, balística e frota DJI/Militar) ou as 8 operações da Campanha Cyberpunk (arcade neon de alta voltagem).'
+      ? 'Escolha o universo natural, com 10 operações e frota tática, ou o universo Cyberpunk, com 8 missões neon. O voo arcade é o padrão nos dois; o simulador é uma opção independente nas configurações.'
       : target === 'openworld'
-        ? 'Explore a Metrópole Vale Atlântico (Modo Realista com 8 operações táticas, tráfego e ponte estaiada) ou a Megacidade Neo-Aether (Modo Cyberpunk com 5 Tasks neon).'
-        : 'O Desfiladeiro da Cachoeira pode ser voado como expedição naturalista diurna (Modo Realista) ou incursão Cyberpunk noturna.';
+        ? 'Explore a Metrópole Vale Atlântico, com 8 operações táticas, ou a Megacidade Neo-Aether, com 5 tarefas neon. O modelo de voo permanece à sua escolha nas configurações.'
+        : 'Voe pelo rio, pela floresta e pela cachoeira durante o dia ou escolha a versão cyberpunk noturna. O perfil arcade é o padrão nos dois universos.';
   renderSpecialPills();
   updateUniverseModalConfirmLabel();
   riverStyleModal.classList.add('active');
@@ -801,6 +804,12 @@ function openBriefing(scenarioId: ScenarioId = selectedMission): void {
   byId('briefing-objective').textContent = mission.objective;
   byId('briefing-threat').textContent = mission.threat;
   byId('briefing-gold').textContent = `${mission.medalTargets.goldScore} pts em até ${formatTime(mission.medalTargets.goldTime)}`;
+  const flightLabel = save.flightModel === 'sim' ? 'SIMULADOR' : 'ARCADE';
+  const flightNote = byId('briefing-summary');
+  flightNote.textContent += ` Perfil de voo: ${flightLabel} (independente do universo visual).`;
+  if (mission.id === 'training') {
+    flightNote.textContent += ' Controles: W/S acelera e freia; A/D guina; Espaço/C ajusta altitude; Shift ativa turbo; clique/F dispara; V alterna a câmera.';
+  }
   setState('briefing');
 }
 
@@ -812,10 +821,9 @@ function startMission(): void {
       : 'futuristic';
   timer = 0;
   hudTime.textContent = '00:00';
-  hudMissionCode.textContent =
-    selectedScenario === 'river'
-      ? `${mission.code} · ${RIVER_STYLE_CONFIGS[currentStyle].label.toUpperCase()}`
-      : mission.code;
+  const visualUniverse = effectiveStyle === 'realistic' ? 'NATURAL' : 'CYBERPUNK';
+  const flightLabel = save.flightModel === 'sim' ? 'SIMULADOR' : 'ARCADE';
+  hudMissionCode.textContent = `${mission.code} · ${visualUniverse} · VOO ${flightLabel}`;
   hudObjective.textContent = mission.hudTarget;
 
   const owCounts = completedCountForStyle(effectiveStyle);
@@ -976,6 +984,7 @@ function handleGameEvent(event: GameEvent): void {
     hudSpeed.textContent = String(event.speed).padStart(3, '0');
     hudAltitude.textContent = String(event.altitude).padStart(3, '0');
     boostBar.style.width = `${event.boost}%`;
+    if (showPerfReadout && event.fps) perfReadout.textContent = `FPS ${event.fps} · ${window.innerWidth}×${window.innerHeight}`;
     if (game.getVisualStyle() === 'realistic') {
       const windSpeed = event.windSpeed ?? 0;
       const pitch = event.pitchDeg ?? 0;
@@ -1256,6 +1265,7 @@ function setFlightModel(model: FlightModel): void {
   saveExtras(extras);
   document.querySelectorAll<HTMLElement>('.flight-chip').forEach((chip) => {
     chip.classList.toggle('selected', chip.dataset.flightModel === model);
+    chip.setAttribute('aria-pressed', String(chip.dataset.flightModel === model));
   });
 }
 

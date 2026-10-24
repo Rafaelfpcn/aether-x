@@ -75,6 +75,7 @@ export type GameEvent =
       pitchDeg?: number;
       rollDeg?: number;
       headingDeg?: number;
+      fps?: number;
     }
   | { type: 'gate'; count: number; target?: number }
   | { type: 'enemyDestroyed'; count: number; target?: number; archetype?: EnemyArchetype }
@@ -267,6 +268,8 @@ export class Game {
   private readonly tracerMaterial = new THREE.MeshBasicMaterial({ color: 0xffb84d });
   private readonly enemyBoltGeometry = new THREE.SphereGeometry(0.26, 12, 12);
   private readonly enemyBoltMaterial = new THREE.MeshBasicMaterial({ color: 0xff4568 });
+  private readonly enemyNavBeaconGeometry = new THREE.SphereGeometry(0.16, 8, 8);
+  private readonly enemyNavBeaconMaterial = new THREE.MeshBasicMaterial({ color: 0xffb35b, toneMapped: false });
   private readonly debrisGeometry = new THREE.DodecahedronGeometry(0.32, 0);
   private readonly debrisMaterial = new THREE.MeshStandardMaterial({
     color: 0x38414a,
@@ -318,9 +321,9 @@ export class Game {
     roughness: 0.42,
   });
   private readonly sharedEnemyRealisticMat = new THREE.MeshStandardMaterial({
-    color: 0x3b443c,
-    metalness: 0.28,
-    roughness: 0.62,
+    color: 0x596457,
+    metalness: 0.18,
+    roughness: 0.68,
   });
   private readonly droneVelocity = new THREE.Vector3();
   private droneYawVelocity = 0;
@@ -336,6 +339,9 @@ export class Game {
   private ammoCount = 90;
   private reloadTimer = 0;
   private lastTelemetry = 0;
+  private fpsFrames = 0;
+  private fpsElapsed = 0;
+  private measuredFps = 0;
   private radarAngle = 0;
   private lockedEnemy: Enemy | null = null;
   private shield = MAX_SHIELD;
@@ -607,6 +613,9 @@ export class Game {
     this.bossCycle = 0;
     this.bossExposed = true;
     this.lastTelemetry = 0;
+    this.fpsFrames = 0;
+    this.fpsElapsed = 0;
+    this.measuredFps = 0;
     this.lastShot = 0;
     const maxMag = this.getMaxMagazine();
     this.ammoCount = maxMag;
@@ -1665,15 +1674,20 @@ export class Game {
     group.add(hullMesh);
 
     const coreMaterial = new THREE.MeshStandardMaterial({
-      color: isRealistic ? 0xd96b27 : color,
-      emissive: isRealistic ? 0x421b05 : emissiveHex,
-      emissiveIntensity: isRealistic ? 0.9 : boss ? 2.7 : 2.0,
+      color: isRealistic ? 0xe89a4f : color,
+      emissive: isRealistic ? 0x552808 : emissiveHex,
+      emissiveIntensity: isRealistic ? 0.82 : boss ? 2.7 : 2.0,
       metalness: 0.28,
       roughness: 0.18,
     });
     const core = new THREE.Mesh(boss ? this.bossCoreGeo : this.enemyCoreGeo, coreMaterial);
-    if (isRealistic) core.scale.setScalar(0.58);
+    if (isRealistic) core.scale.setScalar(0.68);
     group.add(core);
+    if (isRealistic && !boss) {
+      const navBeacon = new THREE.Mesh(this.enemyNavBeaconGeometry, this.enemyNavBeaconMaterial);
+      navBeacon.position.set(0, 0.56, -0.18);
+      group.add(navBeacon);
+    }
 
     const rings: THREE.Mesh[] = [];
     const petals: THREE.Mesh[] = [];
@@ -1984,8 +1998,18 @@ export class Game {
   private animate = (): void => {
     if (this.disposed) return;
     requestAnimationFrame(this.animate);
-    const dt = Math.min(this.clock.getDelta(), 0.05);
+    const frameDelta = this.clock.getDelta();
+    const dt = Math.min(frameDelta, 0.05);
     const elapsed = this.clock.elapsedTime;
+    if (this.active) {
+      this.fpsFrames++;
+      this.fpsElapsed += frameDelta;
+      if (this.fpsElapsed >= 1) {
+        this.measuredFps = Math.round(this.fpsFrames / this.fpsElapsed);
+        this.fpsFrames = 0;
+        this.fpsElapsed = 0;
+      }
+    }
     if (this.qualityLevel === 'auto') {
       const nextQ = this.autoQuality.sample(dt);
       if (nextQ) {
@@ -2066,6 +2090,7 @@ export class Game {
         pitchDeg: Math.round(THREE.MathUtils.radToDeg(this.drone.rotation.x)),
         rollDeg: Math.round(THREE.MathUtils.radToDeg(this.drone.rotation.z)),
         headingDeg: ((Math.round(THREE.MathUtils.radToDeg(-this.drone.rotation.y)) % 360) + 360) % 360,
+        fps: this.measuredFps,
       });
     }
     this.audio.update(this.droneVelocity.length(), this.boosting);

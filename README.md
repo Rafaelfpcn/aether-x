@@ -17,13 +17,13 @@ Campanha Cyberpunk · Operações Realistas · Mundos Abertos · Hangar & Upgrad
 O **AETHER-X** é um jogo completo de combate e simulação aeroespacial desenvolvido em Three.js e TypeScript, projetado para rodar diretamente do navegador sem necessidade de servidor ou conexão com a internet.
 
 ### Destaques
-- **Dois Universos Visuais**:
-  - **Modo Realista**: Aerodinâmica com inércia, arrasto, rajadas de vento, efeito solo, recarga de munição balística traçante (`R`), OSD com horizonte artificial e telemetria GPS.
-  - **Modo Cyberpunk**: Ação arcade neon de alta velocidade, escudo defletor de plasma e canhões de pulso contínuo.
-- **Dois Modelos de Voo Independentes** (`FlightModel`):
+- **Dois Universos Visuais** (cenários, drones, armas e HUD):
+  - **Natural / Tático**: biomas naturais, frota tática, munição balística (`R`), horizonte artificial e telemetria GPS.
+  - **Cyberpunk**: cidade neon, esquadrões biomecânicos, escudo de plasma e canhões de pulso.
+- **Dois Modelos de Voo Independentes do visual** (`FlightModel`):
   - **Arcade**: Voo responsivo, agilidade instantânea e mira assistida.
   - **Simulador**: Sustentação física, inércia de curva, ângulo de atitude e resposta a turbulência.
-  - *Alternável livremente no menu de Configurações, independente do estilo visual.*
+  - *O perfil arcade é o padrão nos dois universos; altere para simulador nas Configurações quando quiser.*
 - **Câmera Dinâmica com Mira Desobstruída**:
   - Enquadramento inteligente que compensa manobras de mergulho, garantindo que o drone nunca obstrua o retículo central contra alvos.
 - **Estabilização Ativa de Voo (GPS & Altitude Hold)**:
@@ -39,7 +39,7 @@ O menu principal centraliza a experiência em três modos de navegação rápida
 2. **Mundo Aberto**: Exploração livre em metrópoles com 8 tarefas dinâmicas por universo.
 3. **Vale da Cachoeira**: Expedição de alta velocidade pelo desfiladeiro fluvial e cânion hidrotermal.
 
-Ao selecionar qualquer modo, o jogador escolhe entre o **Modo Realista** e o **Modo Cyberpunk**.
+Ao selecionar qualquer modo, o jogador escolhe entre o universo **Natural / Tático** e o **Cyberpunk**. A escolha de voo (Arcade ou Simulador) fica separada nas Configurações e vale para ambos.
 
 ### 2. Campanhas
 - **Campanha Cyberpunk (8 Missões)**:
@@ -112,3 +112,5 @@ pnpm test            # Bateria automatizada de testes de invariantes
 pnpm build           # Compilação e empacotamento offline
 pnpm verify:offline  # Validação de integridade 100% autônoma
 ```
+
+Para exibir o diagnóstico de FPS durante o desenvolvimento, abra `http://127.0.0.1:5173/?perf`.
